@@ -6,89 +6,31 @@ bl_info = {
 
 
 import bpy
-from enum import Enum
+import math
 from typing import NamedTuple, List, Optional, Tuple
 import mathutils
 
 
-class HumanBones(Enum):
-    hips = "hips"
-    spine = "spine"
-    chest = "chest"
-    upperChest = "upperChest"
-    neck = "neck"
-    head = "head"
-    leftEye = "leftEye"
-    rightEye = "rightEye"
-    jaw = "jaw"
-    # arms
-    leftShoulder = "Shoulder.L"
-    leftUpperArm = "UpperArm.L"
-    leftLowerArm = "LowerArm.L"
-    leftHand = "Hand.L"
-    rightShoulder = "Shoulder.R"
-    rightUpperArm = "UpperArm.R"
-    rightLowerArm = "LowerArm.R"
-    rightHand = "Hand.R"
-    # legs
-    leftUpperLeg = "UpperLeg.L"
-    leftLowerLeg = "LowerLeg.L"
-    leftFoot = "Foot.L"
-    leftToes = "Toes.L"
-    rightUpperLeg = "UpperLeg.R"
-    rightLowerLeg = "LowerLeg.R"
-    rightFoot = "Foot.R"
-    rightToes = "Toes.R"
-    # fingers
-    leftThumbMetacarpal = "ThumbMetacarpal.L"
-    leftThumbProximal = "ThumbProximal.L"
-    leftThumbDistal = "ThumbDistal.L"
-    leftIndexProximal = "IndexProximal.L"
-    leftIndexIntermediate = "IndexIntermediate.L"
-    leftIndexDistal = "IndexDistal.L"
-    leftMiddleProximal = "MiddleProximal.L"
-    leftMiddleIntermediate = "MiddleIntermediate.L"
-    leftMiddleDistal = "MiddleDistal.L"
-    leftRingProximal = "RingProximal.L"
-    leftRingIntermediate = "RingIntermediate.L"
-    leftRingDistal = "RingDistal.L"
-    leftLittleProximal = "LittleProximal.L"
-    leftLittleIntermediate = "LittleIntermediate.L"
-    leftLittleDistal = "LittleDistal.L"
-    rightThumbMetacarpal = "ThumbMetacarpal.R"
-    rightThumbProximal = "ThumbProximal.R"
-    rightThumbDistal = "ThumbDistal.R"
-    rightIndexProximal = "IndexProximal.R"
-    rightIndexIntermediate = "IndexIntermediate.R"
-    rightIndexDistal = "IndexDistal.R"
-    rightMiddleProximal = "MiddleProximal.R"
-    rightMiddleIntermediate = "MiddleIntermediate.R"
-    rightMiddleDistal = "MiddleDistal.R"
-    rightRingProximal = "RingProximal.R"
-    rightRingIntermediate = "RingIntermediate.R"
-    rightRingDistal = "RingDistal.R"
-    rightLittleProximal = "LittleProximal.R"
-    rightLittleIntermediate = "LittleIntermediate.R"
-    rightLittleDistal = "LittleDistal.R"
-    tip = "tip"
-
-
 class Bone(NamedTuple):
-    human_bone: HumanBones
+    human_bone: str
     head: Tuple[float, float, float]
     children: List["Bone"] = []
 
     def create(
         self, armature: bpy.types.Armature, parent: Optional[bpy.types.EditBone] = None
     ):
-        name = self.human_bone.name
-        if parent and self.human_bone == HumanBones.tip:
+        name = self.human_bone
+        if parent and self.human_bone == "tip":
             name = parent.name + ".tip"
 
         bone = get_or_create_bone(armature, name)
         bone.head = self.head
         if parent:
             bone.head += parent.head
+        if bone.head.x > 0:
+            bone.name += ".L"
+        elif bone.head.x < 0:
+            bone.name += ".R"
         bone.tail = bone.head
         for i, child in enumerate(self.children):
             child_bone = child.create(armature, bone)
@@ -99,136 +41,104 @@ class Bone(NamedTuple):
         return bone
 
 
-NECK_HEAD = Bone(
-    HumanBones.neck,
-    (0, 0, 1),
-    [
-        Bone(
-            HumanBones.head,
-            (0, 0, 1),
-            [Bone(HumanBones.tip, (0, 0, 1))],
-        )
-    ],
-)
+def get_arm(lr: float):
+    return Bone(
+        "Shoulder",
+        (lr * 0.1, 0, math.fabs(lr) * 2),
+        [
+            Bone(
+                "UpperArm",
+                (lr, 0, 0),
+                [
+                    Bone(
+                        "LowerArm",
+                        (lr * 2, 0, 0),
+                        [
+                            Bone(
+                                "Hand",
+                                (lr * 2, 0, 0),
+                                [Bone("tip", (lr, 0, 0))],
+                            )
+                        ],
+                    )
+                ],
+            )
+        ],
+    )
 
-LEFT_ARM = Bone(
-    HumanBones.leftShoulder,
-    (1, 0, 1),
-    [
-        Bone(
-            HumanBones.leftUpperArm,
-            (1, 0, 0),
-            [
-                Bone(
-                    HumanBones.leftLowerArm,
-                    (1, 0, 0),
-                    [
-                        Bone(
-                            HumanBones.leftHand,
-                            (1, 0, 0),
-                            [Bone(HumanBones.tip, (1, 0, 0))],
-                        )
-                    ],
-                )
-            ],
-        )
-    ],
-)
-RIGHT_ARM = Bone(
-    HumanBones.rightShoulder,
-    (-1, 0, 1),
-    [
-        Bone(
-            HumanBones.rightUpperArm,
-            (-1, 0, 0),
-            [
-                Bone(
-                    HumanBones.rightLowerArm,
-                    (-1, 0, 0),
-                    [
-                        Bone(
-                            HumanBones.rightHand,
-                            (-1, 0, 0),
-                            [Bone(HumanBones.tip, (-1, 0, 0))],
-                        )
-                    ],
-                )
-            ],
-        )
-    ],
-)
 
-LEFT_LEG = Bone(
-    HumanBones.leftUpperLeg,
-    (1, 0, 0),
-    [
-        Bone(
-            HumanBones.leftLowerLeg,
-            (0, 0, -1),
-            [
-                Bone(
-                    HumanBones.leftFoot,
-                    (0, 0, -1),
-                    [
-                        Bone(
-                            HumanBones.leftToes,
-                            (0, -1, -1),
-                            [Bone(HumanBones.tip, (0, -1, 0))],
-                        )
-                    ],
-                )
-            ],
-        ),
-    ],
-)
+def get_leg(tall: float, lr: float):
+    # upper 1
+    # lower 1
+    # foot 0.2
+    base = tall / 11
+    return Bone(
+        "UpperLeg",
+        (lr * base, 0, 0),
+        [
+            Bone(
+                "LowerLeg",
+                (0, 0, -base * 5),
+                [
+                    Bone(
+                        "Foot",
+                        (0, 0, -base * 5),
+                        [
+                            Bone(
+                                "Toes",
+                                (0, -base, -base),
+                                [Bone("tip", (0, -base, 0))],
+                            )
+                        ],
+                    )
+                ],
+            ),
+        ],
+    )
 
-RIGHT_LEG = Bone(
-    HumanBones.rightUpperLeg,
-    (-1, 0, 0),
-    [
-        Bone(
-            HumanBones.rightLowerLeg,
-            (0, 0, -1),
-            [
-                Bone(
-                    HumanBones.rightFoot,
-                    (0, 0, -1),
-                    [
-                        Bone(
-                            HumanBones.rightToes,
-                            (0, -1, -1),
-                            [Bone(HumanBones.tip, (0, -1, 0))],
-                        )
-                    ],
-                )
-            ],
-        ),
-    ],
-)
 
-HUMANOID = Bone(
-    HumanBones.hips,
-    (0, 0, 1),
-    [
-        Bone(
-            HumanBones.spine,
-            (0, 0, 1),
-            [
-                Bone(
-                    HumanBones.chest,
-                    (0, 0, 1),
-                    [
-                        NECK_HEAD,
-                        LEFT_ARM,
-                        RIGHT_ARM,
-                    ],
-                )
-            ],
-        ),
-        LEFT_LEG,
-        RIGHT_LEG,
-    ],
-)
+def get_humanoid(tall: float):
+    head = tall / 6
+    # head=1
+    #
+    # neck  1
+    # chest 4
+    # spine 2
+    # hips  2
+    base = head * 2 / 9
+    return Bone(
+        "Hips",
+        (0, 0, tall / 2),
+        [
+            Bone(
+                "Spine",
+                (0, 0, base * 2),
+                [
+                    Bone(
+                        "Chest",
+                        (0, 0, base * 2),
+                        [
+                            Bone(
+                                "Neck",
+                                (0, 0, base * 4),
+                                [
+                                    Bone(
+                                        "Head",
+                                        (0, 0, base),
+                                        [Bone("tip", (0, 0, head))],
+                                    )
+                                ],
+                            ),
+                            get_arm(base * 2),
+                            get_arm(-base * 2),
+                        ],
+                    )
+                ],
+            ),
+            get_leg(tall / 2, 1),
+            get_leg(tall / 2, -1),
+        ],
+    )
 
 
 def activate(context, obj):
@@ -255,12 +165,14 @@ def create(context):
         print(f"enter EDIT mode from {mode} mode")
         bpy.ops.object.mode_set(mode="EDIT")
 
-    armature.show_names = True
+    # armature.show_names = True
     armature.show_axes = True
     armature.use_mirror_x = True
     armature.display_type = "OCTAHEDRAL"
 
-    HUMANOID.create(armature)
+    humanoid = get_humanoid(1.6)
+
+    humanoid.create(armature)
 
 
 class CreateHumanoid(bpy.types.Operator):
