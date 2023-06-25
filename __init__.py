@@ -174,6 +174,63 @@ def create(context):
 
     humanoid.create(armature)
 
+    # to object mode
+    mode = context.object.mode
+    if mode != "OBJECT":
+        print(f"enter EDIT mode from {mode} mode")
+        bpy.ops.object.mode_set(mode="OBJECT")
+
+    # custom property
+    armature.humanoid.hips = "Hips"
+    armature.humanoid.spine = "Spine"
+    armature.humanoid.chest = "Chest"
+    armature.humanoid.neck = "Neck"
+    armature.humanoid.head = "Head"
+
+    armature.humanoid.left_shoulder = "Shoulder.L"
+    armature.humanoid.left_upper_arm = "UpperArm.L"
+    armature.humanoid.left_lower_arm = "LowerArm.L"
+    armature.humanoid.left_hand = "Hand.L"
+    armature.humanoid.right_shoulder = "Shoulder.R"
+    armature.humanoid.right_upper_arm = "UpperArm.R"
+    armature.humanoid.right_lower_arm = "LowerArm.R"
+    armature.humanoid.right_hand = "Hand.R"
+
+    armature.humanoid.left_upper_leg = "UpperLeg.L"
+    armature.humanoid.left_lower_leg = "LowerLeg.L"
+    armature.humanoid.left_foot = "Foot.L"
+    armature.humanoid.left_toes = "Toes.L"
+    armature.humanoid.right_upper_leg = "UpperLeg.R"
+    armature.humanoid.right_lower_leg = "LowerLeg.R"
+    armature.humanoid.right_foot = "Foot.R"
+    armature.humanoid.right_toes = "Toes.R"
+
+
+class HumanoidProperties(bpy.types.PropertyGroup):
+    hips: bpy.props.StringProperty(name="hips")
+    spine: bpy.props.StringProperty(name="spine")
+    chest: bpy.props.StringProperty(name="chest")
+    neck: bpy.props.StringProperty(name="neck")
+    head: bpy.props.StringProperty(name="head")
+    #
+    left_shoulder: bpy.props.StringProperty(name="left_shoulder")
+    left_upper_arm: bpy.props.StringProperty(name="left_upper_arm")
+    left_lower_arm: bpy.props.StringProperty(name="left_lower_arm")
+    left_hand: bpy.props.StringProperty(name="left_hand")
+    right_shoulder: bpy.props.StringProperty(name="right_shoulder")
+    right_upper_arm: bpy.props.StringProperty(name="right_upper_arm")
+    right_lower_arm: bpy.props.StringProperty(name="right_lower_arm")
+    right_hand: bpy.props.StringProperty(name="right_hand")
+    #
+    left_upper_leg: bpy.props.StringProperty(name="left_upper_leg")
+    left_lower_leg: bpy.props.StringProperty(name="left_lower_leg")
+    left_foot: bpy.props.StringProperty(name="left_foot")
+    left_toes: bpy.props.StringProperty(name="left_toes")
+    right_upper_leg: bpy.props.StringProperty(name="right_upper_leg")
+    right_lower_leg: bpy.props.StringProperty(name="right_lower_leg")
+    right_foot: bpy.props.StringProperty(name="right_foot")
+    right_toes: bpy.props.StringProperty(name="right_toes")
+
 
 class CreateHumanoid(bpy.types.Operator):
     """CreateHumanoidArmature"""
@@ -197,22 +254,43 @@ class ArmatureHumanoidPanel(bpy.types.Panel):
     bl_region_type = "UI"
     bl_category = "Humanoid"
     bl_label = "Humanoid"
-    bl_context = "armature_edit"
 
-    # @classmethod
-    # def poll(cls, context):
-    #     for o in bpy.data.objects:
-    #         if o.select:
-    #             return True
-    #     return False
+    @classmethod
+    def poll(cls, context):
+        if context.active_object:
+            return isinstance(context.active_object.data, bpy.types.Armature)
+
+    def draw_bone(self, armature: bpy.types.Armature, bone: str):
+        self.layout.prop_search(armature.humanoid, bone, armature, "bones")
+
+    def draw_bone_lr(self, armature: bpy.types.Armature, bone: str):
+        split = self.layout.split(factor=0.24)
+        split.label(text=f"{bone}:")
+        split.column().prop_search(
+            armature.humanoid, f"left_{bone}", armature, "bones", text=""
+        )
+        split.column().prop_search(
+            armature.humanoid, f"right_{bone}", armature, "bones", text=""
+        )
 
     def draw(self, context):
-        self.layout.label(text="Hello World")
         armature = context.active_object.data
-        self.layout.prop_search(armature, "humanoid_hips", armature, "edit_bones")
+        self.draw_bone(armature, "hips")
+        self.draw_bone(armature, "spine")
+        self.draw_bone(armature, "chest")
+        self.draw_bone(armature, "neck")
+        self.draw_bone(armature, "head")
+        self.draw_bone_lr(armature, "shoulder")
+        self.draw_bone_lr(armature, "upper_arm")
+        self.draw_bone_lr(armature, "lower_arm")
+        self.draw_bone_lr(armature, "hand")
+        self.draw_bone_lr(armature, "upper_leg")
+        self.draw_bone_lr(armature, "lower_leg")
+        self.draw_bone_lr(armature, "foot")
+        self.draw_bone_lr(armature, "toes")
 
 
-CLASSES = [CreateHumanoid, ArmatureHumanoidPanel]
+CLASSES = [CreateHumanoid, HumanoidProperties, ArmatureHumanoidPanel]
 
 
 def menu_func(self, context):
@@ -224,9 +302,7 @@ def register():
         bpy.utils.register_class(cls)
     bpy.types.VIEW3D_MT_object.append(menu_func)
 
-    bpy.types.Armature.humanoid_hips = bpy.props.StringProperty(
-        name="hips",
-    )
+    bpy.types.Armature.humanoid = bpy.props.PointerProperty(type=HumanoidProperties)
 
 
 def unregister():

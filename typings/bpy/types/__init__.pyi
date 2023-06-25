@@ -31,6 +31,9 @@ class Armature(Data):
 class Object(bpy_struct):
     pass
 
+class Panel(bpy_struct):
+    pass
+
 class Context(bpy_struct):
     pass
 
