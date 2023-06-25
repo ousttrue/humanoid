@@ -1,5 +1,5 @@
 import mathutils
-from typing import Literal, Generic, TypeVar, Union, Tuple
+from typing import Literal, Generic, TypeVar, Union, Tuple, Optional
 
 T1 = TypeVar("T1")
 
@@ -35,7 +35,15 @@ class Panel(bpy_struct):
     pass
 
 class Context(bpy_struct):
-    pass
+    """
+    https://docs.blender.org/api/current/bpy.types.Context.html
+    https://docs.blender.org/api/current/bpy.context.html#bpy.context.active_object
+    """
+
+    @property
+    def active_object(self) -> Optional[Object]: ...
+    @property
+    def object(self) -> Optional[Object]: ...
 
 class Operator:
     pass
