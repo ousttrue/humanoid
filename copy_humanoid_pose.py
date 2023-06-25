@@ -1,40 +1,11 @@
-from typing import Optional, BinaryIO, Tuple, Iterable, cast
+from typing import Optional, Tuple, Iterable, cast
 import math
 import contextlib
 import struct
-import pathlib
 import bpy
 import mathutils  # type: ignore
 import json
-import sys
-import io
-
-
-FINISHED = {"FINISHED"}
-
-HUMANOID_MAP = {
-    "Hips": "hips",
-    "Spine": "spine",
-    "Spine1": "chest",
-    "Neck": "neck",
-    "Head": "head",
-    "LeftShoulder": "leftShoulder",
-    "LeftArm": "leftUpperArm",
-    "LeftForeArm": "leftLowerArm",
-    "LeftHand": "leftHand",
-    "RightShoulder": "rightShoulder",
-    "RightArm": "rightUpperArm",
-    "RightForeArm": "rightLowerArm",
-    "RightHand": "rightHand",
-    "LeftUpLeg": "leftUpperLeg",
-    "LeftLeg": "leftLowerLeg",
-    "LeftFoot": "leftFoot",
-    "LeftToeBase": "leftToes",
-    "RightUpLeg": "rightUpperLeg",
-    "RightLeg": "rightLowerLeg",
-    "RightFoot": "rightFoot",
-    "RightToeBase": "rightToes",
-}
+from . import humanoid_properties
 
 
 @contextlib.contextmanager
@@ -52,7 +23,12 @@ def enter_pose(obj: bpy.types.Object):
 
 
 class Builder:
-    def __init__(self) -> None:
+    def __init__(self, armature: bpy.types.Armature) -> None:
+        assert isinstance(armature, bpy.types.Armature)
+        # custom property
+        self.humanoid_map = armature.humanoid
+        assert self.humanoid_map
+
         self.gltf = {
             "scene": 0,
             "scenes": [{"nodes": [0]}],
@@ -63,31 +39,22 @@ class Builder:
                 }
             ],
             "asset": {"version": "2.0"},
-            "extensionsUsed": ["VRMC_vrm"],
+            "extensionsUsed": ["VRMC_vrm_animation"],
             "extensions": {
-                "VRMC_vrm": {
-                    "humanoid": {"humanBones": {}},
-                    "meta": {
-                        "allowAntisocialOrHateUsage": True,
-                        "allowExcessivelySexualUsage": True,
-                        "allowExcessivelyViolentUsage": True,
-                        "allowPoliticalOrReligiousUsage": True,
-                        "allowRedistribution": True,
-                        "authors": ["python bvh pose"],
-                        "avatarPermission": "everyone",
-                        "commercialUsage": "corporation",
-                        "copyrightInformation": "python bvh pose",
-                        "creditNotation": "required",
-                        "licenseUrl": "",
-                        "modification": "allowModificationRedistribution",
-                        "name": "pose",
-                        "version": "1",
+                "VRMC_vrm_animation": {
+                    "humanoid": {
+                        "humanBones": {},
+                        "frame": {},
                     },
                     "specVersion": "1.0",
                 },
-                "VRMC_vrm_pose": {},
             },
         }
+
+    def get_human_bone(self, bone_name: str) -> Optional[str]:
+        for prop in humanoid_properties.PROP_NAMES:
+            if getattr(self.humanoid_map, prop) == bone_name:
+                return prop
 
     def get_root(self) -> dict:
         return self.gltf["nodes"][0]
@@ -114,11 +81,11 @@ class Builder:
             "rotation": [r.x, r.y, r.z, r.w],
         }
         index = self.add_child(parent, node)
-        bone_name = HUMANOID_MAP.get(b.name)
+        bone_name = self.get_human_bone(b.name)
         if bone_name:
-            self.gltf["extensions"]["VRMC_vrm"]["humanoid"]["humanBones"][bone_name] = {
-                "node": index
-            }
+            self.gltf["extensions"]["VRMC_vrm_animation"]["humanoid"]["humanBones"][
+                bone_name
+            ] = {"node": index}
         else:
             print(f"{b.name} not found")
 
@@ -140,7 +107,7 @@ class Builder:
         pose = cast(bpy.types.Pose, o.pose)  # type: ignore
         with enter_pose(o):
             for b in pose.bones:
-                human_bone = HUMANOID_MAP.get(b.name)
+                human_bone = self.get_human_bone(b.name)
                 if human_bone:
                     init = b.bone.matrix
                     m = b.matrix
@@ -149,12 +116,13 @@ class Builder:
                     else:
                         m = mathutils.Matrix.Rotation(math.radians(-90.0), 4, "X") @ m
                     t, r, s = m.decompose()
-                    bone_pose = {
-                        "rotation": [r.x, r.y, r.z, r.w],
-                    }
+
+                    frame = self.gltf["extensions"]["VRMC_vrm_animation"]["humanoid"][
+                        "frame"
+                    ]
+                    frame[human_bone] = [r.x, r.y, r.z, r.w]
                     if not b.parent:
-                        bone_pose["translation"] = [t.x, t.y, t.z]
-                    self.gltf["extensions"]["VRMC_vrm_pose"][human_bone] = bone_pose
+                        frame["translation"] = [t.x, t.y, t.z]
 
     def to_json(self) -> str:
         return json.dumps(self.gltf, indent=2)
@@ -183,34 +151,34 @@ def glb_bytes(json_chunk: bytes, bin_chunk: bytes) -> Iterable[bytes]:
     yield b"\0" * bin_chunk_padding
 
 
-def main():
-    ret = bpy.ops.import_anim.bvh(  # type: ignore
-        filepath=sys.argv[1],
-        use_fps_scale=True,
-        update_scene_duration=True,
-    )
-    if ret != FINISHED:
-        raise Exception()
+# def main():
+#     ret = bpy.ops.import_anim.bvh(  # type: ignore
+#         filepath=sys.argv[1],
+#         use_fps_scale=True,
+#         update_scene_duration=True,
+#     )
+#     if ret != FINISHED:
+#         raise Exception()
 
-    bpy.context.scene.frame_current = 450
+#     bpy.context.scene.frame_current = 450
 
-    builder = Builder()
-    o = bpy.context.active_object  # type: ignore
+#     builder = Builder()
+#     o = bpy.context.active_object  # type: ignore
 
-    builder.get_tpose(o)
-    builder.get_current_pose(o)
+#     builder.get_tpose(o)
+#     builder.get_current_pose(o)
 
-    # to clip board
-    text = builder.to_json()
-    print(text)
-    pyperclip.copy(text)
+#     # to clip board
+#     text = builder.to_json()
+#     print(text)
+#     pyperclip.copy(text)
 
-    # to vrm
-    if len(sys.argv) > 2:
-        dst = pathlib.Path(sys.argv[2])
-        with dst.open("wb") as w:
-            for b in glb_bytes(json.dumps(builder.gltf).encode("utf-8"), b""):
-                w.write(b)
+#     # to vrm
+#     if len(sys.argv) > 2:
+#         dst = pathlib.Path(sys.argv[2])
+#         with dst.open("wb") as w:
+#             for b in glb_bytes(json.dumps(builder.gltf).encode("utf-8"), b""):
+#                 w.write(b)
 
 
 class CopyHumanoidPose(bpy.types.Operator):
@@ -225,6 +193,15 @@ class CopyHumanoidPose(bpy.types.Operator):
         return False
 
     def execute(self, context: bpy.types.Context):
-        self.report({"INFO"}, f"{type(context.active_object.data)}")
-        context.window_manager.clipboard = "copy pose"
+        o = bpy.context.active_object  # type: ignore
+        builder = Builder(o.data)
+
+        builder.get_tpose(o)
+        builder.get_current_pose(o)
+
+        # to clip board
+        text = builder.to_json()
+        # print(text)
+        self.report({"INFO"}, "copy pose to clipboard")
+        context.window_manager.clipboard = text
         return {"FINISHED"}
