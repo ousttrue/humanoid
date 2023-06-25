@@ -191,18 +191,42 @@ class CreateHumanoid(bpy.types.Operator):
         return {"FINISHED"}
 
 
-CLASSES = [CreateHumanoid]
+class ArmatureHumanoidPanel(bpy.types.Panel):
+    bl_idname = "OBJECT_PT_humanoid"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Humanoid"
+    bl_label = "Humanoid"
+    bl_context = "armature_edit"
+
+    # @classmethod
+    # def poll(cls, context):
+    #     for o in bpy.data.objects:
+    #         if o.select:
+    #             return True
+    #     return False
+
+    def draw(self, context):
+        self.layout.label(text="Hello World")
+        armature = context.active_object.data
+        self.layout.prop_search(armature, "humanoid_hips", armature, "edit_bones")
+
+
+CLASSES = [CreateHumanoid, ArmatureHumanoidPanel]
 
 
 def menu_func(self, context):
-    for cls in CLASSES:
-        self.layout.operator(cls.bl_idname)
+    self.layout.operator(CreateHumanoid.bl_idname)
 
 
 def register():
     for cls in CLASSES:
         bpy.utils.register_class(cls)
     bpy.types.VIEW3D_MT_object.append(menu_func)
+
+    bpy.types.Armature.humanoid_hips = bpy.props.StringProperty(
+        name="hips",
+    )
 
 
 def unregister():
