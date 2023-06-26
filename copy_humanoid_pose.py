@@ -7,6 +7,25 @@ import mathutils  # type: ignore
 import json
 from . import humanoid_properties
 
+PROP_TO_HUMANBONE = {
+    "left_shoulder": "leftShoulder",
+    "left_upper_arm": "leftUpperArm",
+    "left_lower_arm": "leftLowerArm",
+    "left_hand": "leftHand",
+    "right_shoulder": "rightShoulder",
+    "right_upper_arm": "rightUpperArm",
+    "right_lower_arm": "rightLowerArm",
+    "right_hand": "rightHand",
+    "left_upper_leg": "leftUpperLeg",
+    "left_lower_leg": "leftLowerLeg",
+    "left_foot": "leftFoot",
+    "left_toes": "leftToes",
+    "right_upper_leg": "rightUpperLeg",
+    "right_lower_leg": "rightLowerLeg",
+    "right_foot": "rightFoot",
+    "right_toes": "rightToes",
+}
+
 
 @contextlib.contextmanager
 def enter_pose(obj: bpy.types.Object):
@@ -23,7 +42,8 @@ def enter_pose(obj: bpy.types.Object):
 
 
 class Builder:
-    def __init__(self, armature: bpy.types.Armature) -> None:
+    def __init__(self, armature: bpy.types.Armature, to_meter: float) -> None:
+        self.to_meter = to_meter
         assert isinstance(armature, bpy.types.Armature)
         # custom property
         self.humanoid_map = armature.humanoid
@@ -54,33 +74,39 @@ class Builder:
     def get_human_bone(self, bone_name: str) -> Optional[str]:
         for prop in humanoid_properties.PROP_NAMES:
             if getattr(self.humanoid_map, prop) == bone_name:
-                return prop
+                human_bone = PROP_TO_HUMANBONE.get(prop)
+                if human_bone:
+                    return human_bone
+                else:
+                    return prop
 
-    def get_root(self) -> dict:
-        return self.gltf["nodes"][0]
-
-    def add_child(self, parent: Optional[dict], node: dict) -> int:
+    def add_child(self, gltf_parent: Optional[dict], gltf_node: dict) -> int:
         index = len(self.gltf["nodes"])
-        if not parent:
-            parent = self.get_root()
-        if "children" not in parent:
-            parent["children"] = []
-        parent["children"].append(index)
-        self.gltf["nodes"].append(node)
+        if not gltf_parent:
+            # root
+            gltf_parent = self.gltf["nodes"][0]
+        if "children" not in gltf_parent:
+            gltf_parent["children"] = []
+        gltf_parent["children"].append(index)
+        self.gltf["nodes"].append(gltf_node)
         return index
 
-    def traverse(self, b, parent, *, indent: str):
+    def traverse(self, b, gltf_parent, *, indent: str):
         m = b.matrix_local
         if b.parent:
             m = b.parent.matrix_local.inverted() @ m
         t, r, s = m.decompose()
-        # print(f'{indent}{b}: {t} {r}')
-        node = {
+        print(f"{indent}{b}: {t} {r}")
+        gltf_node = {
             "name": b.name,
-            "translation": [t.x, t.y, t.z],
+            "translation": [
+                t.x * self.to_meter,
+                t.y * self.to_meter,
+                t.z * self.to_meter,
+            ],
             "rotation": [r.x, r.y, r.z, r.w],
         }
-        index = self.add_child(parent, node)
+        index = self.add_child(gltf_parent, gltf_node)
         bone_name = self.get_human_bone(b.name)
         if bone_name:
             self.gltf["extensions"]["VRMC_vrm_animation"]["humanoid"]["humanBones"][
@@ -90,18 +116,14 @@ class Builder:
             print(f"{b.name} not found")
 
         for child in b.children:
-            self.traverse(child, node, indent=indent + "  ")
+            self.traverse(child, gltf_node, indent=indent + "  ")
 
-        return node
+        return gltf_node
 
     def get_tpose(self, o: bpy.types.Object):
-        def get_roots(a: bpy.types.Armature):
-            for bone in a.bones:
-                if not bone.parent:
-                    yield bone
-
-        for root in get_roots(o.data):
-            root_node = self.traverse(root, None, indent="")
+        for bone in o.data.bones:
+            if not bone.parent:
+                self.traverse(bone, None, indent="")
 
     def get_current_pose(self, o: bpy.types.Object):
         pose = cast(bpy.types.Pose, o.pose)  # type: ignore
@@ -114,15 +136,23 @@ class Builder:
                     if b.parent:
                         m = b.parent.matrix.inverted() @ m
                     else:
-                        m = mathutils.Matrix.Rotation(math.radians(-90.0), 4, "X") @ m
+                        m = (
+                            mathutils.Matrix.Rotation(math.radians(180.0), 4, "Z")
+                            @ mathutils.Matrix.Rotation(math.radians(180.0), 4, "X")
+                            @ m
+                        )
                     t, r, s = m.decompose()
 
                     frame = self.gltf["extensions"]["VRMC_vrm_animation"]["humanoid"][
                         "frame"
                     ]
                     frame[human_bone] = [r.x, r.y, r.z, r.w]
-                    if not b.parent:
-                        frame["translation"] = [t.x, t.y, t.z]
+                    if human_bone == "hips":
+                        frame["translation"] = [
+                            t.x * self.to_meter,
+                            -t.z * self.to_meter,
+                            t.y * self.to_meter,
+                        ]
 
     def to_json(self) -> str:
         return json.dumps(self.gltf, indent=2)
@@ -194,7 +224,7 @@ class CopyHumanoidPose(bpy.types.Operator):
 
     def execute(self, context: bpy.types.Context):
         o = bpy.context.active_object  # type: ignore
-        builder = Builder(o.data)
+        builder = Builder(o.data, 1)
 
         builder.get_tpose(o)
         builder.get_current_pose(o)

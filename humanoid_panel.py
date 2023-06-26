@@ -1,6 +1,6 @@
 import bpy
 from .copy_humanoid_pose import CopyHumanoidPose
-
+from .guess_human_bones import GuessHumanBones
 
 class ArmatureHumanoidPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_humanoid"
@@ -42,4 +42,5 @@ class ArmatureHumanoidPanel(bpy.types.Panel):
         self.draw_bone_lr(armature, "lower_leg")
         self.draw_bone_lr(armature, "foot")
         self.draw_bone_lr(armature, "toes")
+        self.layout.operator(GuessHumanBones.bl_idname)
         self.layout.operator(CopyHumanoidPose.bl_idname)

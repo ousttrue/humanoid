@@ -18,6 +18,7 @@ class Bone(NamedTuple):
         bone = get_or_create_bone(armature, name)
         bone.head = self.head
         if parent:
+            bone.parent = parent
             bone.head += parent.head
         if bone.head.x > 0:
             bone.name += ".L"
@@ -28,7 +29,6 @@ class Bone(NamedTuple):
             child_bone = child.create(armature, bone)
             if i == 0:
                 bone.tail = child_bone.head
-                child_bone.parent = bone
                 child_bone.use_connect = True
         return bone
 

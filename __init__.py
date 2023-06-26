@@ -7,27 +7,37 @@ bl_info = {
     "version": (1, 0, 0),
 }
 
-if "bpy" in locals():
-    import importlib
-
-    if "humanoid_properties" in locals():
-        importlib.reload(humanoid_properties)
-    if "create_humanoid" in locals():
-        importlib.reload(create_humanoid)
-    if "copy_humanoid_pose" in locals():
-        importlib.reload(copy_humanoid_pose)
-    if "humanoid_panel" in locals():
-        importlib.reload(humanoid_panel)
-
-
 import bpy
+import importlib
+
+if "humanoid_properties" in locals():
+    print("reload")
+    importlib.reload(humanoid_properties)
+
+if "create_humanoid" in locals():
+    print("reload")
+    importlib.reload(create_humanoid)
+
+if "copy_humanoid_pose" in locals():
+    print("reload")
+    importlib.reload(copy_humanoid_pose)
+
+if "guess_human_bones" in locals():
+    print("reload")
+    importlib.reload(guess_human_bones)
+
+if "humanoid_panel" in locals():
+    print("reload")
+    importlib.reload(humanoid_panel)
+
 from .humanoid_properties import HumanoidProperties
 from .create_humanoid import CreateHumanoid
 from .copy_humanoid_pose import CopyHumanoidPose
+from .guess_human_bones import GuessHumanBones
 from .humanoid_panel import ArmatureHumanoidPanel
 
 
-OPERATORS = [CreateHumanoid, CopyHumanoidPose]
+OPERATORS = [CreateHumanoid, CopyHumanoidPose, GuessHumanBones]
 CLASSES = [HumanoidProperties, ArmatureHumanoidPanel] + OPERATORS
 
 
