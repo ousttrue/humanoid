@@ -2,6 +2,7 @@ import bpy
 from .copy_humanoid_pose import CopyHumanoidPose
 from .guess_human_bones import GuessHumanBones
 
+
 class ArmatureHumanoidPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_humanoid"
     bl_space_type = "VIEW_3D"
@@ -44,3 +45,18 @@ class ArmatureHumanoidPanel(bpy.types.Panel):
         self.draw_bone_lr(armature, "toes")
         self.layout.operator(GuessHumanBones.bl_idname)
         self.layout.operator(CopyHumanoidPose.bl_idname)
+        self.draw_bone_lr(armature, "thumb_metacarpal")
+        self.draw_bone_lr(armature, "thumb_proximal")
+        self.draw_bone_lr(armature, "thumb_distal")
+        self.draw_bone_lr(armature, "index_proximal")
+        self.draw_bone_lr(armature, "index_intermediate")
+        self.draw_bone_lr(armature, "index_distal")
+        self.draw_bone_lr(armature, "middle_proximal")
+        self.draw_bone_lr(armature, "middle_intermediate")
+        self.draw_bone_lr(armature, "middle_distal")
+        self.draw_bone_lr(armature, "ring_proximal")
+        self.draw_bone_lr(armature, "ring_intermediate")
+        self.draw_bone_lr(armature, "ring_distal")
+        self.draw_bone_lr(armature, "little_proximal")
+        self.draw_bone_lr(armature, "little_intermediate")
+        self.draw_bone_lr(armature, "little_distal")

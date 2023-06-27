@@ -24,6 +24,36 @@ PROP_TO_HUMANBONE = {
     "right_lower_leg": "rightLowerLeg",
     "right_foot": "rightFoot",
     "right_toes": "rightToes",
+    "left_thumb_metacarpal": "leftThumbMetacarpal",
+    "left_thumb_proximal": "leftThumbProximal",
+    "left_thumb_distal": "leftThumbDistal",
+    "left_index_proximal": "leftIndexProximal",
+    "left_index_intermediate": "leftIndexIntermediate",
+    "left_index_distal": "leftIndexDistal",
+    "left_middle_proximal": "leftMiddleProximal",
+    "left_middle_intermediate": "leftMiddleIntermediate",
+    "left_middle_distal": "leftMiddleDistal",
+    "left_ring_proximal": "leftRingProximal",
+    "left_ring_intermediate": "leftRingIntermediate",
+    "left_ring_distal": "leftRingDistal",
+    "left_little_proximal": "leftLittleProximal",
+    "left_little_intermediate": "leftLittleIntermediate",
+    "left_little_distal": "leftLittleDistal",
+    "right_thumb_metacarpal": "rightThumbMetacarpal",
+    "right_thumb_proximal": "rightThumbProximal",
+    "right_thumb_distal": "rightThumbDistal",
+    "right_index_proximal": "rightIndexProximal",
+    "right_index_intermediate": "rightIndexIntermediate",
+    "right_index_distal": "rightIndexDistal",
+    "right_middle_proximal": "rightMiddleProximal",
+    "right_middle_intermediate": "rightMiddleIntermediate",
+    "right_middle_distal": "rightMiddleDistal",
+    "right_ring_proximal": "rightRingProximal",
+    "right_ring_intermediate": "rightRingIntermediate",
+    "right_ring_distal": "rightRingDistal",
+    "right_little_proximal": "rightLittleProximal",
+    "right_little_intermediate": "rightLittleIntermediate",
+    "right_little_distal": "rightLittleDistal",
 }
 
 
@@ -112,6 +142,7 @@ class Builder:
             self.gltf["extensions"]["VRMC_vrm_animation"]["humanoid"]["humanBones"][
                 bone_name
             ] = {"node": index}
+            print(f"{b.name}: {bone_name}")
         else:
             print(f"{b.name} not found")
 
@@ -136,10 +167,7 @@ class Builder:
                     if b.parent:
                         m = b.parent.matrix.inverted() @ m
                     else:
-                        m = (
-                            mathutils.Matrix.Rotation(math.radians(180.0), 4, "Z")
-                            @ m
-                        )
+                        m = mathutils.Matrix.Rotation(math.radians(180.0), 4, "Z") @ m
                     t, r, s = m.decompose()
 
                     frame = self.gltf["extensions"]["VRMC_vrm_animation"]["humanoid"][
@@ -155,59 +183,6 @@ class Builder:
 
     def to_json(self) -> str:
         return json.dumps(self.gltf, indent=2)
-
-
-def glb_bytes(json_chunk: bytes, bin_chunk: bytes) -> Iterable[bytes]:
-    def chunk_size(chunk: bytes) -> Tuple[int, int]:
-        chunk_size = len(chunk)
-        padding = 4 - chunk_size % 4
-        return chunk_size, padding
-
-    json_chunk_size, json_chunk_padding = chunk_size(json_chunk)
-    bin_chunk_size, bin_chunk_padding = chunk_size(bin_chunk)
-    total_size = (
-        12
-        + (8 + json_chunk_size + json_chunk_padding)
-        + (8 + bin_chunk_size + bin_chunk_padding)
-    )
-
-    yield struct.pack("III", 0x46546C67, 2, total_size)
-    yield struct.pack("II", json_chunk_size + json_chunk_padding, 0x4E4F534A)
-    yield json_chunk
-    yield b" " * json_chunk_padding
-    yield struct.pack("II", bin_chunk_size + bin_chunk_padding, 0x004E4942)
-    yield bin_chunk
-    yield b"\0" * bin_chunk_padding
-
-
-# def main():
-#     ret = bpy.ops.import_anim.bvh(  # type: ignore
-#         filepath=sys.argv[1],
-#         use_fps_scale=True,
-#         update_scene_duration=True,
-#     )
-#     if ret != FINISHED:
-#         raise Exception()
-
-#     bpy.context.scene.frame_current = 450
-
-#     builder = Builder()
-#     o = bpy.context.active_object  # type: ignore
-
-#     builder.get_tpose(o)
-#     builder.get_current_pose(o)
-
-#     # to clip board
-#     text = builder.to_json()
-#     print(text)
-#     pyperclip.copy(text)
-
-#     # to vrm
-#     if len(sys.argv) > 2:
-#         dst = pathlib.Path(sys.argv[2])
-#         with dst.open("wb") as w:
-#             for b in glb_bytes(json.dumps(builder.gltf).encode("utf-8"), b""):
-#                 w.write(b)
 
 
 class CopyHumanoidPose(bpy.types.Operator):

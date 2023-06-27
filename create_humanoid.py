@@ -1,6 +1,7 @@
 from typing import NamedTuple, Tuple, List, Optional
 import bpy
 import math
+from mathutils import Vector
 
 
 class Bone(NamedTuple):
@@ -33,7 +34,55 @@ class Bone(NamedTuple):
         return bone
 
 
-def get_arm(lr: float):
+def get_finger(name: str, lr: float, y: float) -> Bone:
+    """
+    手首から指: 10
+    指: 5-3-2
+    親指: 5-4-3
+    """
+    base = lr / 10
+    return Bone(
+        f"{name}Proximal",
+        (base * 10, y, 0),
+        [
+            Bone(
+                f"{name}Intermediate",
+                (base * 5, 0, 0),
+                [
+                    Bone(
+                        f"{name}Distal",
+                        (base * 3, 0, 0),
+                        [Bone("tip", (base * 2, 0, 0))],
+                    )
+                ],
+            )
+        ],
+    )
+
+
+def get_thumb(x: float, y: float, z: float) -> Bone:
+    base = x / 10
+    return Bone(
+        f"ThumbMetacarpal",
+        (base * 3, y, z),
+        [
+            Bone(
+                f"ThumbProximal",
+                (base * 5, 0, 0),
+                [
+                    Bone(
+                        f"ThumbDistal",
+                        (base * 3, 0, 0),
+                        [Bone("tip", (base * 2, 0, 0))],
+                    )
+                ],
+            )
+        ],
+    )
+
+
+def get_arm(lr: float) -> Bone:
+    f = lr * 0.6
     return Bone(
         "Shoulder",
         (lr * 0.1, 0, math.fabs(lr) * 2),
@@ -49,7 +98,13 @@ def get_arm(lr: float):
                             Bone(
                                 "Hand",
                                 (lr * 2, 0, 0),
-                                [Bone("tip", (lr, 0, 0))],
+                                [
+                                    get_finger("Middle", f, 0),
+                                    get_finger("Index", f, -0.02),
+                                    get_finger("Ring", f * 0.9, 0.02),
+                                    get_finger("Little", f * 0.8, 0.03),
+                                    get_thumb(f, -0.03, -0.02),
+                                ],
                             )
                         ],
                     )
@@ -196,6 +251,38 @@ def create(context):
     armature.humanoid.right_lower_leg = "LowerLeg.R"
     armature.humanoid.right_foot = "Foot.R"
     armature.humanoid.right_toes = "Toes.R"
+
+    armature.humanoid.left_thumb_metacarpal = "ThumbMetacarpal.L"
+    armature.humanoid.left_thumb_proximal = "ThumbProximal.L"
+    armature.humanoid.left_thumb_distal = "ThumbDistal.L"
+    armature.humanoid.left_index_proximal = "IndexProximal.L"
+    armature.humanoid.left_index_intermediate = "IndexIntermediate.L"
+    armature.humanoid.left_index_distal = "IndexDistal.L"
+    armature.humanoid.left_middle_proximal = "MiddleProximal.L"
+    armature.humanoid.left_middle_intermediate = "MiddleIntermediate.L"
+    armature.humanoid.left_middle_distal = "MiddleDistal.L"
+    armature.humanoid.left_ring_proximal = "RingProximal.L"
+    armature.humanoid.left_ring_intermediate = "RingIntermediate.L"
+    armature.humanoid.left_ring_distal = "RingDistal.L"
+    armature.humanoid.left_little_proximal = "LittleProximal.L"
+    armature.humanoid.left_little_intermediate = "LittleIntermediate.L"
+    armature.humanoid.left_little_distal = "LittleDistal.L"
+
+    armature.humanoid.right_thumb_metacarpal = "ThumbMetacarpal.R"
+    armature.humanoid.right_thumb_proximal = "ThumbProximal.R"
+    armature.humanoid.right_thumb_distal = "ThumbDistal.R"
+    armature.humanoid.right_index_proximal = "IndexProximal.R"
+    armature.humanoid.right_index_intermediate = "IndexIntermediate.R"
+    armature.humanoid.right_index_distal = "IndexDistal.R"
+    armature.humanoid.right_middle_proximal = "MiddleProximal.R"
+    armature.humanoid.right_middle_intermediate = "MiddleIntermediate.R"
+    armature.humanoid.right_middle_distal = "MiddleDistal.R"
+    armature.humanoid.right_ring_proximal = "RingProximal.R"
+    armature.humanoid.right_ring_intermediate = "RingIntermediate.R"
+    armature.humanoid.right_ring_distal = "RingDistal.R"
+    armature.humanoid.right_little_proximal = "LittleProximal.R"
+    armature.humanoid.right_little_intermediate = "LittleIntermediate.R"
+    armature.humanoid.right_little_distal = "LittleDistal.R"
 
 
 class CreateHumanoid(bpy.types.Operator):
