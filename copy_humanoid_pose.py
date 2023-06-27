@@ -138,7 +138,6 @@ class Builder:
                     else:
                         m = (
                             mathutils.Matrix.Rotation(math.radians(180.0), 4, "Z")
-                            @ mathutils.Matrix.Rotation(math.radians(180.0), 4, "X")
                             @ m
                         )
                     t, r, s = m.decompose()
@@ -150,7 +149,7 @@ class Builder:
                     if human_bone == "hips":
                         frame["translation"] = [
                             t.x * self.to_meter,
-                            -t.z * self.to_meter,
+                            t.z * self.to_meter,
                             t.y * self.to_meter,
                         ]
 
