@@ -64,7 +64,10 @@ class ArmatureHumanoidPanel(bpy.types.Panel):
         self.draw_bone_lr(armature, "lower_leg")
         self.draw_bone_lr(armature, "foot")
         self.draw_bone_lr(armature, "toes")
-        self.layout.operator(GuessHumanBones.bl_idname)
+        btn = self.layout.operator(GuessHumanBones.bl_idname)
+        btn.clear = False
+        btn = self.layout.operator(GuessHumanBones.bl_idname, text="clear")
+        btn.clear = True
         self.layout.operator(CopyHumanoidPose.bl_idname)
         self.draw_bone_lr(armature, "thumb_metacarpal")
         self.draw_bone_lr(armature, "thumb_proximal")
@@ -97,6 +100,7 @@ class ArmatureHumanoidPanel(bpy.types.Panel):
                             if t == current:
                                 # self.layout.label(text=f"{b.name}.{k} => {t}")
                                 btn = self.layout.operator(
-                                    SelectPoseBone.bl_idname, text=f"{b.name}.{c.name}.{k} =>"
+                                    SelectPoseBone.bl_idname,
+                                    text=f"{b.name}.{c.name}.{k} =>",
                                 )
                                 btn.bone = b.name
