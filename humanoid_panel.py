@@ -3,6 +3,27 @@ from .copy_humanoid_pose import CopyHumanoidPose
 from .guess_human_bones import GuessHumanBones
 
 
+class SelectPoseBone(bpy.types.Operator):
+    bl_idname = "humanoid.select_posebone"
+    bl_label = "select_pose_bone"
+    bl_options = {"REGISTER", "UNDO"}
+
+    bone: bpy.props.StringProperty(name="bone_name")
+
+    @classmethod
+    def poll(cls, context):
+        if context.active_object:
+            return isinstance(context.active_object.data, bpy.types.Armature)
+
+    def execute(self, context):
+        bone = context.active_object.pose.bones[self.bone].bone
+        context.active_object.data.bones.active.select = False
+        bone.select = True
+        context.active_object.data.bones.active = bone
+        self.report({"INFO"}, f"select: {self.bone}")
+        return {"FINISHED"}
+
+
 class ArmatureHumanoidPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_humanoid"
     bl_space_type = "VIEW_3D"
@@ -60,3 +81,22 @@ class ArmatureHumanoidPanel(bpy.types.Panel):
         self.draw_bone_lr(armature, "little_proximal")
         self.draw_bone_lr(armature, "little_intermediate")
         self.draw_bone_lr(armature, "little_distal")
+
+        # constraint debug
+        if context.mode == "POSE":
+            self.layout.label(text=f"for debug. search constraint ref:")
+            if context.active_pose_bone:
+                # armature = context.active_object.data
+                current = context.active_pose_bone.name
+                self.layout.label(text=f"active bone: {current}")
+                self.layout.label(text="referenced from ...")
+                for b in context.active_object.pose.bones:
+                    for c in b.constraints:
+                        for k in dir(c):
+                            t = getattr(c, k)
+                            if t == current:
+                                # self.layout.label(text=f"{b.name}.{k} => {t}")
+                                btn = self.layout.operator(
+                                    SelectPoseBone.bl_idname, text=f"{b.name}.{c.name}.{k} =>"
+                                )
+                                btn.bone = b.name

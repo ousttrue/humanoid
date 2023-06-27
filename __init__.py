@@ -34,10 +34,10 @@ from .humanoid_properties import HumanoidProperties
 from .create_humanoid import CreateHumanoid
 from .copy_humanoid_pose import CopyHumanoidPose
 from .guess_human_bones import GuessHumanBones
-from .humanoid_panel import ArmatureHumanoidPanel
+from .humanoid_panel import ArmatureHumanoidPanel, SelectPoseBone
 
 
-OPERATORS = [CreateHumanoid, CopyHumanoidPose, GuessHumanBones]
+OPERATORS = [CreateHumanoid, CopyHumanoidPose, GuessHumanBones, SelectPoseBone]
 CLASSES = [HumanoidProperties, ArmatureHumanoidPanel] + OPERATORS
 
 
