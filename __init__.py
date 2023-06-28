@@ -43,7 +43,10 @@ CLASSES = [HumanoidProperties, ArmatureHumanoidPanel] + OPERATORS
 
 def menu_func(self, context):
     for op in OPERATORS:
-        self.layout.operator(op.bl_idname)
+        if hasattr(op, "bl_icon"):
+            self.layout.operator(op.bl_idname, icon=op.bl_icon)
+        else:
+            self.layout.operator(op.bl_idname)
 
 
 def register():

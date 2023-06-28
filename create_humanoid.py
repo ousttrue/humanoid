@@ -9,9 +9,7 @@ class Bone(NamedTuple):
     head: Tuple[float, float, float]
     children: List["Bone"] = []
 
-    def create(
-        self, armature: bpy.types.Armature, parent: Optional[bpy.types.EditBone] = None
-    ):
+    def create(self, armature: bpy.types.Armature, parent: bpy.types.EditBone):
         name = self.human_bone
         if parent and self.human_bone == "tip":
             name = parent.name + ".tip"
@@ -219,7 +217,10 @@ def create(context):
 
     humanoid = get_humanoid(1.6)
 
-    humanoid.create(armature)
+    # root
+    root = get_or_create_bone(armature, "root")
+    root.tail = (0, 1, 0)
+    humanoid.create(armature, root)
 
     # to object mode
     mode = context.object.mode
@@ -291,6 +292,7 @@ class CreateHumanoid(bpy.types.Operator):
     bl_idname = "humanoid.create"
     bl_label = "Create Humanoid Armature"
     bl_options = {"REGISTER", "UNDO"}
+    bl_icon = "OUTLINER_OB_ARMATURE"
 
     @classmethod
     def poll(cls, context):
