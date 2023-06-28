@@ -2,6 +2,7 @@ from typing import NamedTuple, Tuple, List, Optional
 import bpy
 import math
 from mathutils import Vector
+from .enter_pose_mode import enter_pose
 
 
 class Bone(NamedTuple):
@@ -284,6 +285,10 @@ def create(context):
     armature.humanoid.right_little_proximal = "LittleProximal.R"
     armature.humanoid.right_little_intermediate = "LittleIntermediate.R"
     armature.humanoid.right_little_distal = "LittleDistal.R"
+
+    with enter_pose(obj):
+        for b in obj.pose.bones:
+            b.rotation_mode = "ZYX"
 
 
 class CreateHumanoid(bpy.types.Operator):

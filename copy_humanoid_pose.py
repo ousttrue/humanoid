@@ -1,11 +1,10 @@
 from typing import Optional, Tuple, Iterable, cast
 import math
-import contextlib
-import struct
 import bpy
 import mathutils  # type: ignore
 import json
 from . import humanoid_properties
+from .enter_pose_mode import enter_pose
 
 PROP_TO_HUMANBONE = {
     "left_shoulder": "leftShoulder",
@@ -55,20 +54,6 @@ PROP_TO_HUMANBONE = {
     "right_little_intermediate": "rightLittleIntermediate",
     "right_little_distal": "rightLittleDistal",
 }
-
-
-@contextlib.contextmanager
-def enter_pose(obj: bpy.types.Object):
-    bpy.context.view_layer.objects.active = obj
-    if bpy.context.mode == "POSE":
-        yield
-    else:
-        bpy.ops.object.posemode_toggle()
-        try:
-            yield
-        finally:
-            bpy.context.view_layer.objects.active = obj
-            bpy.ops.object.posemode_toggle()
 
 
 class Builder:
