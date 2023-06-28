@@ -4,6 +4,47 @@ import math
 from mathutils import Vector
 from .enter_pose_mode import enter_pose
 
+ROLL_MAP = {
+    "Shoulder.L": 90,
+    "UpperArm.L": 90,
+    "LowerArm.L": 90,
+    "Shoulder.R": -90,
+    "UpperArm.R": -90,
+    "LowerArm.R": -90,
+    "Toes.L": 180,
+    "Toes.R": 180,
+    "ThumbMetacarpal.L": -90,
+    "ThumbProximal.L": -90,
+    "ThumbDistal.L": -90,
+    "ThumbMetacarpal.R": 90,
+    "ThumbProximal.R": 90,
+    "ThumbDistal.R": 90,
+    "IndexProximal.L": 180,
+    "IndexIntermediate.L": 180,
+    "IndexDistal.L": 180,
+    "MiddleProximal.L": 180,
+    "MiddleIntermediate.L": 180,
+    "MiddleDistal.L": 180,
+    "RingProximal.L": 180,
+    "RingIntermediate.L": 180,
+    "RingDistal.L": 180,
+    "LittleProximal.L": 180,
+    "LittleIntermediate.L": 180,
+    "LittleDistal.L": 180,
+    "IndexProximal.R": 180,
+    "IndexIntermediate.R": 180,
+    "IndexDistal.R": 180,
+    "MiddleProximal.R": 180,
+    "MiddleIntermediate.R": 180,
+    "MiddleDistal.R": 180,
+    "RingProximal.R": 180,
+    "RingIntermediate.R": 180,
+    "RingDistal.R": 180,
+    "LittleProximal.R": 180,
+    "LittleIntermediate.R": 180,
+    "LittleDistal.R": 180,
+}
+
 
 class Bone(NamedTuple):
     human_bone: str
@@ -223,6 +264,13 @@ def create(context):
     root.tail = (0, 1, 0)
     humanoid.create(armature, root)
 
+    # fix roll
+    def to_rad(degree: float) -> float:
+        return math.pi * degree / 180
+
+    for k, roll in ROLL_MAP.items():
+        armature.edit_bones[k].roll = to_rad(roll)
+
     # to object mode
     mode = context.object.mode
     if mode != "OBJECT":
@@ -286,9 +334,27 @@ def create(context):
     armature.humanoid.right_little_intermediate = "LittleIntermediate.R"
     armature.humanoid.right_little_distal = "LittleDistal.R"
 
+    def is_limb(bone: str) -> bool:
+        if bone.startswith("LowerArm"):
+            return True
+        if bone.startswith("LowerLeg"):
+            return True
+        if "Metacarpal" in bone:
+            return True
+        if "Proximal" in bone:
+            return True
+        if "Intermediate" in bone:
+            return True
+        if "Distal" in bone:
+            return True
+        return False
+
     with enter_pose(obj):
         for b in obj.pose.bones:
             b.rotation_mode = "ZYX"
+            if is_limb(b.name):
+                b.lock_rotation[1] = True
+                b.lock_rotation[2] = True
 
 
 class CreateHumanoid(bpy.types.Operator):
