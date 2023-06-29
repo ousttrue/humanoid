@@ -6,6 +6,9 @@ import json
 from . import humanoid_properties
 from .enter_pose_mode import enter_pose
 
+VRM_ANIMATION = "VRMC_vrm_animation"
+VRM_POSE = "VRMC_vrm_pose"
+
 PROP_TO_HUMANBONE = {
     "left_shoulder": "leftShoulder",
     "left_upper_arm": "leftUpperArm",
@@ -74,14 +77,30 @@ class Builder:
                 }
             ],
             "asset": {"version": "2.0"},
-            "extensionsUsed": ["VRMC_vrm_animation"],
+            "extensionsUsed": [VRM_ANIMATION, VRM_POSE],
             "extensions": {
-                "VRMC_vrm_animation": {
+                VRM_ANIMATION: {
                     "humanoid": {
                         "humanBones": {},
-                        "frame": {},
                     },
                     "specVersion": "1.0",
+                    "extensions": {
+                        VRM_POSE: {
+                            "humanoid": {
+                                "translation": [0, 0, 0],
+                                "rotations": {},
+                            },
+                            "expressions": {
+                                "preset": {
+                                    "happy": 1,
+                                    "Aa": 1,
+                                }
+                            },
+                            "lookAt": {
+                                "position": [4, 5, 6],
+                            },
+                        },
+                    },
                 },
             },
         }
@@ -124,7 +143,8 @@ class Builder:
         index = self.add_child(gltf_parent, gltf_node)
         bone_name = self.get_human_bone(b.name)
         if bone_name:
-            self.gltf["extensions"]["VRMC_vrm_animation"]["humanoid"]["humanBones"][
+            # bone node mapping
+            self.gltf["extensions"][VRM_ANIMATION]["humanoid"]["humanBones"][
                 bone_name
             ] = {"node": index}
             print(f"{b.name}: {bone_name}")
@@ -155,12 +175,12 @@ class Builder:
                         m = mathutils.Matrix.Rotation(math.radians(180.0), 4, "Z") @ m
                     t, r, s = m.decompose()
 
-                    frame = self.gltf["extensions"]["VRMC_vrm_animation"]["humanoid"][
-                        "frame"
-                    ]
-                    frame[human_bone] = [r.x, r.y, r.z, r.w]
+                    vrm_pose = self.gltf["extensions"][VRM_ANIMATION]["extensions"][
+                        VRM_POSE
+                    ]["humanoid"]
+                    vrm_pose["rotations"][human_bone] = [r.x, r.y, r.z, r.w]
                     if human_bone == "hips":
-                        frame["translation"] = [
+                        vrm_pose["translation"] = [
                             t.x * self.to_meter,
                             t.z * self.to_meter,
                             t.y * self.to_meter,

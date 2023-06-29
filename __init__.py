@@ -2,9 +2,9 @@ bl_info = {
     "name": "Humanoid",
     "blender": (3, 5, 0),
     "category": "Object",
-    "description": "Create default amarture and copy pose to clipboard as VRM-animation",
+    "description": "Create default armarture and copy pose to clipboard as VRMC_vrm_pose",
     "author": "ousttrue",
-    "version": (1, 0, 0),
+    "version": (2, 0, 0),
 }
 
 import bpy
