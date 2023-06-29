@@ -364,6 +364,7 @@ class CreateHumanoid(bpy.types.Operator):
     bl_label = "Create Humanoid Armature"
     bl_options = {"REGISTER", "UNDO"}
     bl_icon = "OUTLINER_OB_ARMATURE"
+    bl_menu = 'VIEW3D_MT_armature_add'
 
     @classmethod
     def poll(cls, context):

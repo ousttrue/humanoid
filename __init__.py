@@ -41,18 +41,22 @@ OPERATORS = [CreateHumanoid, CopyHumanoidPose, GuessHumanBones, SelectPoseBone]
 CLASSES = [HumanoidProperties, ArmatureHumanoidPanel] + OPERATORS
 
 
-def menu_func(self, context):
-    for op in OPERATORS:
+def add_to_menu(menu: str, op):
+    def menu_func(self, context):
         if hasattr(op, "bl_icon"):
             self.layout.operator(op.bl_idname, icon=op.bl_icon)
         else:
             self.layout.operator(op.bl_idname)
 
+    getattr(bpy.types, menu).prepend(menu_func)
+
 
 def register():
     for cls in CLASSES:
         bpy.utils.register_class(cls)
-    bpy.types.VIEW3D_MT_object.append(menu_func)
+
+        if hasattr(cls, "bl_menu"):
+            add_to_menu(cls.bl_menu, cls)
 
     bpy.types.Armature.humanoid = bpy.props.PointerProperty(type=HumanoidProperties)
 
