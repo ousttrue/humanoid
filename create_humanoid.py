@@ -240,7 +240,13 @@ def get_or_create_bone(armature: bpy.types.Armature, name: str):
 
 
 def make_inverted_pelvis(obj: bpy.types.Object):
+    mode = bpy.context.object.mode
+    if mode != "EDIT":
+        print(f"enter EDIT mode from {mode} mode")
+        bpy.ops.object.mode_set(mode="EDIT")
+
     armature = cast(bpy.types.Armature, obj.data)
+
     cog = armature.edit_bones.new("COG")
     cog.parent = armature.edit_bones["root"]
     cog.head = armature.edit_bones["Spine"].head
@@ -257,9 +263,65 @@ def make_inverted_pelvis(obj: bpy.types.Object):
         hips = obj.pose.bones["Hips"]
         hips.lock_rotation = (True, True, True)
         hips.lock_scale = (True, True, True)
-        armature.bones['Hips'].hide = True
+        armature.bones["Hips"].hide = True
 
     armature.bones["Spine"].use_inherit_rotation = False
+
+
+def make_leg_ik(obj: bpy.types.Object, suffix: str):
+    mode = bpy.context.object.mode
+    if mode != "EDIT":
+        print(f"enter EDIT mode from {mode} mode")
+        bpy.ops.object.mode_set(mode="EDIT")
+
+    armature = cast(bpy.types.Armature, obj.data)
+
+    foot_name = f"Foot{suffix}"
+    foot_offset_name = f"FootOffset{suffix}"
+    ik_name = f"LegIK{suffix}"
+    lower_name = f"LowerLeg{suffix}"
+    pole_name = f"LegPole{suffix}"
+
+    ik_head = armature.edit_bones[foot_name].head
+    ik = armature.edit_bones.new(ik_name)
+    ik.parent = armature.edit_bones["root"]
+    ik.use_connect = False
+    ik.head = ik_head
+    ik.tail = (ik_head.x, ik_head.y + 0.2, ik_head.z)
+
+    pole_head = armature.edit_bones[lower_name].head
+    pole = armature.edit_bones.new(pole_name)
+    pole.parent = ik
+    pole.use_connect = False
+    pole.head = (pole_head.x, pole_head.y - 0.4, pole_head.z)
+    pole.tail = (pole_head.x, pole_head.y - 0.6, pole_head.z)
+
+    lower = armature.edit_bones[lower_name]
+    lower.head = (lower.head.x, lower.head.y - 0.01, lower.head.z)
+
+    foot_offset = armature.edit_bones.new(foot_offset_name)
+    foot_offset.parent = ik
+    foot_offset.use_connect = False
+    foot_offset.head = armature.edit_bones[foot_name].head
+    foot_offset.tail = armature.edit_bones[foot_name].tail
+
+    with enter_pose(obj):
+        # IK
+        armature.bones.active = armature.bones[lower_name]
+        bpy.ops.pose.constraint_add(type="IK")
+        c = obj.pose.bones[lower_name].constraints["IK"]
+        c.target = obj
+        c.subtarget = ik_name
+        c.pole_target = obj
+        c.pole_subtarget = pole_name
+        c.pole_angle = math.pi * (-90) / 180
+        c.chain_count = 2
+        # FootCopy
+        armature.bones.active = armature.bones[foot_name]
+        bpy.ops.pose.constraint_add(type="COPY_ROTATION")
+        c = obj.pose.bones[foot_name].constraints["Copy Rotation"]
+        c.target = obj
+        c.subtarget = foot_offset_name
 
 
 def create(context):
@@ -381,12 +443,9 @@ def create(context):
 
     # setup rig
     # to object mode
-    mode = context.object.mode
-    if mode != "EDIT":
-        print(f"enter EDIT mode from {mode} mode")
-        bpy.ops.object.mode_set(mode="EDIT")
     make_inverted_pelvis(obj)
-    # make_leg_ik(armature)
+    make_leg_ik(obj, ".L")
+    make_leg_ik(obj, ".R")
     # make_arm_ik(armature)
 
     # to object mode
@@ -394,6 +453,7 @@ def create(context):
     if mode != "OBJECT":
         print(f"enter EDIT mode from {mode} mode")
         bpy.ops.object.mode_set(mode="OBJECT")
+
 
 class CreateHumanoid(bpy.types.Operator):
     """CreateHumanoidArmature"""

@@ -11,25 +11,33 @@ class Collection(Generic[T1]):
 class bpy_struct:
     name: str
 
-class Data(bpy_struct):
+class ID(bpy_struct):
     pass
 
 class EditBone(bpy_struct):
+    #
     @property
     def head(self) -> mathutils.Vector: ...
     @head.setter
     def head(self, v: Union[mathutils.Vector, Tuple[float, float, float]]): ...
 
-    tail: mathutils.Vector
+    #
+    @property
+    def tail(self) -> mathutils.Vector: ...
+    @tail.setter
+    def tail(self, v: Union[mathutils.Vector, Tuple[float, float, float]]): ...
 
-class Armature(Data):
+    parent: Optional[EditBone]
+    use_connect: bool
+
+class Armature(ID):
     show_names: bool
     show_axes: bool
     display_type: Literal["STICK", "OCTAHEDRAL"]
     edit_bones: Collection[EditBone]
 
 class Object(bpy_struct):
-    pass
+    data: ID
 
 class Panel(bpy_struct):
     pass
