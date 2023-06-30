@@ -258,24 +258,24 @@ class HumanTree:
             if getattr(self.humanoid_map, prop) == bone_name:
                 return prop
 
-    def get_children(self, b: bpy.types.Bone) -> Iterable[bpy.types.Bone]:
-        prop = self.prop_from_name(b.name)
+    def child_bone_names_from_name(self, name: str) -> Iterable[bpy.types.Bone]:
+        prop = self.prop_from_name(name)
         if prop:
             for child_prop in enum_children(prop):
-                bone_name = getattr(self.armature.humanoid, child_prop)
-                yield self.armature.bones[bone_name]
+                bone_name = getattr(self.humanoid_map, child_prop)
+                if bone_name:
+                    yield bone_name
 
     def get_parent(self, b: bpy.types.Bone) -> Optional[bpy.types.Bone]:
         prop = self.prop_from_name(b.name)
         if prop:
             parent_prop = get_parent(prop)
             if parent_prop:
-                name = getattr(self.armature.humanoid, parent_prop)
+                name = getattr(self.humanoid_map, parent_prop)
                 return self.armature.bones[name]
 
-    def bone_from_prop(self, prop: str) -> Optional[bpy.types.Bone]:
-        name = getattr(self.armature.humanoid, prop)
-        return self.armature.bones[name]
+    def bonename_from_prop(self, prop: str) -> Optional[bpy.types.Bone]:
+        return getattr(self.humanoid_map, prop)
 
 
 class HumanoidProperties(bpy.types.PropertyGroup):

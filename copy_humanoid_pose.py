@@ -11,8 +11,9 @@ VRM_POSE = "VRMC_vrm_pose"
 
 
 class Builder:
-    def __init__(self, armature: bpy.types.Armature, to_meter: float) -> None:
-        self.tree = humanoid_properties.HumanTree(armature)
+    def __init__(self, obj: bpy.types.Object, to_meter: float) -> None:
+        self.obj = obj
+        self.tree = humanoid_properties.HumanTree(obj.data)
         self.to_meter = to_meter
 
         self.gltf = {
@@ -94,49 +95,50 @@ class Builder:
                 bone_name
             ] = {"node": index}
 
-        for child in b.children:
+        for child_name in self.tree.child_bone_names_from_name(b.name):
+            child = self.tree.armature.bones[child_name]
             self._traverse_tpose(child, b, gltf_node, indent=indent + "  ")
 
         return gltf_node
 
-    def get_tpose(self, o: bpy.types.Object):
-        for bone in o.data.bones:
-            if not bone.parent:
-                self._traverse_tpose(bone, None, None, indent="")
+    def get_tpose(self):
+        hips_name = self.tree.bonename_from_prop("hips")
+        hips = self.obj.data.bones[hips_name]
+        self._traverse_tpose(hips, None, None, indent="")
 
     def _traverse_current_pose(
         self, b: bpy.types.PoseBone, parent: Optional[bpy.types.PoseBone]
     ):
         human_bone = self.tree.vrm_from_name(b.name)
-        if human_bone:
+        assert human_bone
 
-            m = b.matrix
-            if parent:
-                m = parent.matrix.inverted() @ m
-            else:
-                m = mathutils.Matrix.Rotation(math.radians(180.0), 4, "Z") @ m
-            t, r, s = m.decompose()
+        m = b.matrix
+        if parent:
+            m = parent.matrix.inverted() @ m
+        else:
+            m = mathutils.Matrix.Rotation(math.radians(180.0), 4, "Z") @ m
+        t, r, s = m.decompose()
 
-            vrm_pose = self.gltf["extensions"][VRM_ANIMATION]["extensions"][VRM_POSE][
-                "humanoid"
+        vrm_pose = self.gltf["extensions"][VRM_ANIMATION]["extensions"][VRM_POSE][
+            "humanoid"
+        ]
+        vrm_pose["rotations"][human_bone] = [r.x, r.y, r.z, r.w]
+        if human_bone == "hips":
+            vrm_pose["translation"] = [
+                t.x * self.to_meter,
+                t.z * self.to_meter,
+                t.y * self.to_meter,
             ]
-            vrm_pose["rotations"][human_bone] = [r.x, r.y, r.z, r.w]
-            if human_bone == "hips":
-                vrm_pose["translation"] = [
-                    t.x * self.to_meter,
-                    t.z * self.to_meter,
-                    t.y * self.to_meter,
-                ]
 
-        for child in b.children:
+        for child_name in self.tree.child_bone_names_from_name(b.name):
+            child = self.obj.pose.bones[child_name]
             self._traverse_current_pose(child, b)
 
-    def get_current_pose(self, o: bpy.types.Object):
-        pose = cast(bpy.types.Pose, o.pose)  # type: ignore
-        with enter_pose(o):
-            for bone in o.pose.bones:
-                if not bone.parent:
-                    self._traverse_current_pose(bone, None)
+    def get_current_pose(self):
+        with enter_pose(self.obj):
+            hips_name = self.tree.bonename_from_prop("hips")
+            hips = self.obj.pose.bones[hips_name]
+            self._traverse_current_pose(hips, None)
 
     def to_json(self) -> str:
         return json.dumps(self.gltf, indent=2)
@@ -155,10 +157,10 @@ class CopyHumanoidPose(bpy.types.Operator):
 
     def execute(self, context: bpy.types.Context):
         o = bpy.context.active_object  # type: ignore
-        builder = Builder(o.data, 1)
+        builder = Builder(o, 1)
 
-        builder.get_tpose(o)
-        builder.get_current_pose(o)
+        builder.get_tpose()
+        builder.get_current_pose()
 
         # to clip board
         text = builder.to_json()
