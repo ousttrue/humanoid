@@ -246,17 +246,20 @@ def make_inverted_pelvis(obj: bpy.types.Object):
     cog.head = armature.edit_bones["Spine"].head
     cog.tail = (cog.head.x, cog.head.y + 0.4, cog.head.z)
 
-    pelvis = armature.edit_bones.new("pelvis")
+    pelvis = armature.edit_bones.new("Pelvis")
     pelvis.parent = cog
-    pelvis.use_connect = True
-    pelvis.tail = armature.edit_bones["hips"].head
+    pelvis.use_connect = False
+    pelvis.head = cog.head
+    pelvis.tail = armature.edit_bones["Hips"].head
 
-    armature.edit_bones["hips"].parent = pelvis
+    armature.edit_bones["Hips"].parent = pelvis
     with enter_pose(obj):
+        hips = obj.pose.bones["Hips"]
         hips.lock_rotation = (True, True, True)
         hips.lock_scale = (True, True, True)
+        armature.bones['Hips'].hide = True
 
-    armature.edit_bones["spine"].use_inherit_rotation = False
+    armature.bones["Spine"].use_inherit_rotation = False
 
 
 def create(context):
@@ -377,10 +380,20 @@ def create(context):
                 b.lock_rotation[2] = True
 
     # setup rig
+    # to object mode
+    mode = context.object.mode
+    if mode != "EDIT":
+        print(f"enter EDIT mode from {mode} mode")
+        bpy.ops.object.mode_set(mode="EDIT")
     make_inverted_pelvis(obj)
     # make_leg_ik(armature)
     # make_arm_ik(armature)
 
+    # to object mode
+    mode = context.object.mode
+    if mode != "OBJECT":
+        print(f"enter EDIT mode from {mode} mode")
+        bpy.ops.object.mode_set(mode="OBJECT")
 
 class CreateHumanoid(bpy.types.Operator):
     """CreateHumanoidArmature"""
