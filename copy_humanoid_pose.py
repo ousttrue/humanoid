@@ -96,7 +96,7 @@ class Builder:
             ] = {"node": index}
 
         for child_name in self.tree.child_bone_names_from_name(b.name):
-            child = self.tree.armature.bones[child_name]
+            child = self.obj.data.bones[child_name]
             self._traverse_tpose(child, b, gltf_node, indent=indent + "  ")
 
         return gltf_node

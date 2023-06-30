@@ -14,6 +14,9 @@ class bpy_struct:
 class ID(bpy_struct):
     pass
 
+class Bone(bpy_struct):
+    pass
+
 class EditBone(bpy_struct):
     #
     @property
@@ -29,6 +32,9 @@ class EditBone(bpy_struct):
 
     parent: Optional[EditBone]
     use_connect: bool
+
+class PoseBone(bpy_struct):
+    pass
 
 class Armature(ID):
     show_names: bool

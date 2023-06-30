@@ -239,7 +239,6 @@ def get_parent(prop: str) -> Optional[str]:
 
 class HumanTree:
     def __init__(self, armature: bpy.types.Armature) -> None:
-        self.armature = armature
         # custom property
         self.humanoid_map = armature.humanoid
         assert self.humanoid_map
@@ -258,7 +257,7 @@ class HumanTree:
             if getattr(self.humanoid_map, prop) == bone_name:
                 return prop
 
-    def child_bone_names_from_name(self, name: str) -> Iterable[bpy.types.Bone]:
+    def child_bone_names_from_name(self, name: str) -> Iterable[str]:
         prop = self.prop_from_name(name)
         if prop:
             for child_prop in enum_children(prop):
@@ -266,15 +265,14 @@ class HumanTree:
                 if bone_name:
                     yield bone_name
 
-    def get_parent(self, b: bpy.types.Bone) -> Optional[bpy.types.Bone]:
-        prop = self.prop_from_name(b.name)
+    def get_parentname(self, name: str) -> Optional[str]:
+        prop = self.prop_from_name(name)
         if prop:
             parent_prop = get_parent(prop)
             if parent_prop:
                 name = getattr(self.humanoid_map, parent_prop)
-                return self.armature.bones[name]
 
-    def bonename_from_prop(self, prop: str) -> Optional[bpy.types.Bone]:
+    def bonename_from_prop(self, prop: str) -> Optional[str]:
         return getattr(self.humanoid_map, prop)
 
 
