@@ -490,19 +490,19 @@ def create(context):
                 b.lock_rotation[1] = True
                 b.lock_rotation[2] = True
 
-    # # setup rig
-    # # to object mode
-    # make_inverted_pelvis(obj)
-    # make_leg_ik(obj, ".L")
-    # make_leg_ik(obj, ".R")
-    # make_arm_ik(obj, ".L")
-    # make_arm_ik(obj, ".R")
+    # setup rig
+    # to object mode
+    make_inverted_pelvis(obj)
+    make_leg_ik(obj, ".L")
+    make_leg_ik(obj, ".R")
+    make_arm_ik(obj, ".L")
+    make_arm_ik(obj, ".R")
 
-    # # to object mode
-    # mode = context.object.mode
-    # if mode != "OBJECT":
-    #     print(f"enter EDIT mode from {mode} mode")
-    #     bpy.ops.object.mode_set(mode="OBJECT")
+    # to object mode
+    mode = context.object.mode
+    if mode != "OBJECT":
+        print(f"enter EDIT mode from {mode} mode")
+        bpy.ops.object.mode_set(mode="OBJECT")
 
 
 class CreateHumanoid(bpy.types.Operator):
