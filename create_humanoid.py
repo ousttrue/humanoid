@@ -324,6 +324,55 @@ def make_leg_ik(obj: bpy.types.Object, suffix: str):
         c.subtarget = foot_offset_name
 
 
+def make_arm_ik(obj: bpy.types.Object, suffix: str):
+    mode = bpy.context.object.mode
+    if mode != "EDIT":
+        print(f"enter EDIT mode from {mode} mode")
+        bpy.ops.object.mode_set(mode="EDIT")
+
+    armature = cast(bpy.types.Armature, obj.data)
+
+    hand_name = f"Hand{suffix}"
+    ik_name = f"ArmIK{suffix}"
+    lower_name = f"LowerArm{suffix}"
+    pole_name = f"ArmPole{suffix}"
+
+    hand = armature.edit_bones[hand_name]
+    ik = armature.edit_bones.new(ik_name)
+    ik.parent = armature.edit_bones["root"]
+    ik.use_connect = False
+    ik.head = hand.head
+    ik.tail = hand.tail
+
+    pole_head = armature.edit_bones[lower_name].head
+    pole = armature.edit_bones.new(pole_name)
+    pole.parent = armature.edit_bones["COG"]
+    pole.use_connect = False
+    pole.head = (pole_head.x, pole_head.y + 0.4, pole_head.z)
+    pole.tail = (pole_head.x, pole_head.y + 0.6, pole_head.z)
+
+    lower = armature.edit_bones[lower_name]
+    lower.head = (lower.head.x, lower.head.y + 0.01, lower.head.z)
+
+    with enter_pose(obj):
+        # IK
+        armature.bones.active = armature.bones[lower_name]
+        bpy.ops.pose.constraint_add(type="IK")
+        c = obj.pose.bones[lower_name].constraints["IK"]
+        c.target = obj
+        c.subtarget = ik_name
+        c.pole_target = obj
+        c.pole_subtarget = pole_name
+        c.pole_angle = math.pi * (-90) / 180
+        c.chain_count = 2
+        # HandCopy
+        armature.bones.active = armature.bones[hand_name]
+        bpy.ops.pose.constraint_add(type="COPY_ROTATION")
+        c = obj.pose.bones[hand_name].constraints["Copy Rotation"]
+        c.target = obj
+        c.subtarget = ik_name
+
+
 def create(context):
     armature: bpy.types.Armature = bpy.data.armatures.new("Humanoid")
     obj = bpy.data.objects.new("Humanoid", armature)
@@ -446,7 +495,8 @@ def create(context):
     make_inverted_pelvis(obj)
     make_leg_ik(obj, ".L")
     make_leg_ik(obj, ".R")
-    # make_arm_ik(armature)
+    make_arm_ik(obj, ".L")
+    make_arm_ik(obj, ".R")
 
     # to object mode
     mode = context.object.mode
