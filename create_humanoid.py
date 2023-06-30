@@ -1,4 +1,4 @@
-from typing import NamedTuple, Tuple, List, Optional
+from typing import NamedTuple, Tuple, List, Optional, cast
 import bpy
 import math
 from mathutils import Vector
@@ -239,6 +239,26 @@ def get_or_create_bone(armature: bpy.types.Armature, name: str):
     return armature.edit_bones.new(name)
 
 
+def make_inverted_pelvis(obj: bpy.types.Object):
+    armature = cast(bpy.types.Armature, obj.data)
+    cog = armature.edit_bones.new("COG")
+    cog.parent = armature.edit_bones["root"]
+    cog.head = armature.edit_bones["Spine"].head
+    cog.tail = (cog.head.x, cog.head.y + 0.4, cog.head.z)
+
+    pelvis = armature.edit_bones.new("pelvis")
+    pelvis.parent = cog
+    pelvis.use_connect = True
+    pelvis.tail = armature.edit_bones["hips"].head
+
+    armature.edit_bones["hips"].parent = pelvis
+    with enter_pose(obj):
+        hips.lock_rotation = (True, True, True)
+        hips.lock_scale = (True, True, True)
+
+    armature.edit_bones["spine"].use_inherit_rotation = False
+
+
 def create(context):
     armature: bpy.types.Armature = bpy.data.armatures.new("Humanoid")
     obj = bpy.data.objects.new("Humanoid", armature)
@@ -356,6 +376,11 @@ def create(context):
                 b.lock_rotation[1] = True
                 b.lock_rotation[2] = True
 
+    # setup rig
+    make_inverted_pelvis(obj)
+    # make_leg_ik(armature)
+    # make_arm_ik(armature)
+
 
 class CreateHumanoid(bpy.types.Operator):
     """CreateHumanoidArmature"""
@@ -364,7 +389,7 @@ class CreateHumanoid(bpy.types.Operator):
     bl_label = "Create Humanoid Armature"
     bl_options = {"REGISTER", "UNDO"}
     bl_icon = "OUTLINER_OB_ARMATURE"
-    bl_menu = 'VIEW3D_MT_armature_add'
+    bl_menu = "VIEW3D_MT_armature_add"
 
     @classmethod
     def poll(cls, context):
