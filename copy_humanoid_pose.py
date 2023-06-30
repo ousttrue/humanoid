@@ -61,11 +61,8 @@ PROP_TO_HUMANBONE = {
 
 class Builder:
     def __init__(self, armature: bpy.types.Armature, to_meter: float) -> None:
+        self.tree = humanoid_properties.HumanTree(armature)
         self.to_meter = to_meter
-        assert isinstance(armature, bpy.types.Armature)
-        # custom property
-        self.humanoid_map = armature.humanoid
-        assert self.humanoid_map
 
         self.gltf = {
             "scene": 0,
@@ -105,16 +102,7 @@ class Builder:
             },
         }
 
-    def get_human_bone(self, bone_name: str) -> Optional[str]:
-        for prop in humanoid_properties.PROP_NAMES:
-            if getattr(self.humanoid_map, prop) == bone_name:
-                human_bone = PROP_TO_HUMANBONE.get(prop)
-                if human_bone:
-                    return human_bone
-                else:
-                    return prop
-
-    def add_child(self, gltf_parent: Optional[dict], gltf_node: dict) -> int:
+    def add_gltf_node(self, gltf_parent: Optional[dict], gltf_node: dict) -> int:
         index = len(self.gltf["nodes"])
         if not gltf_parent:
             # root
@@ -147,16 +135,13 @@ class Builder:
             ],
             "rotation": [r.x, r.y, r.z, r.w],
         }
-        index = self.add_child(gltf_parent, gltf_node)
-        bone_name = self.get_human_bone(b.name)
+        index = self.add_gltf_node(gltf_parent, gltf_node)
+        bone_name = self.tree.vrm_from_name(b.name)
         if bone_name:
             # bone node mapping
             self.gltf["extensions"][VRM_ANIMATION]["humanoid"]["humanBones"][
                 bone_name
             ] = {"node": index}
-            print(f"{b.name}: {bone_name}")
-        else:
-            print(f"{b.name} not found")
 
         for child in b.children:
             self._traverse_tpose(child, b, gltf_node, indent=indent + "  ")
@@ -172,7 +157,7 @@ class Builder:
         pose = cast(bpy.types.Pose, o.pose)  # type: ignore
         with enter_pose(o):
             for b in pose.bones:
-                human_bone = self.get_human_bone(b.name)
+                human_bone = self.tree.vrm_from_name(b.name)
                 if human_bone:
                     init = b.bone.matrix
                     m = b.matrix
