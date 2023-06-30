@@ -54,7 +54,7 @@ class Builder:
             },
         }
 
-    def add_child(self, gltf_parent: Optional[dict], gltf_node: dict) -> int:
+    def add_gltf_node(self, gltf_parent: Optional[dict], gltf_node: dict) -> int:
         index = len(self.gltf["nodes"])
         if not gltf_parent:
             # root
@@ -65,10 +65,11 @@ class Builder:
         self.gltf["nodes"].append(gltf_node)
         return index
 
-    def traverse(self, b, gltf_parent, *, indent: str):
+    def _traverse_tpose(self, b, gltf_parent, *, indent: str):
         m = b.matrix_local
-        if b.parent:
-            m = b.parent.matrix_local.inverted() @ m
+        parent = self.tree.get_parent(b)
+        if parent:
+            m = parent.matrix_local.inverted() @ m
         t, r, s = m.decompose()
         print(f"{indent}{b}: {t} {r}")
         gltf_node = {
@@ -80,46 +81,48 @@ class Builder:
             ],
             "rotation": [r.x, r.y, r.z, r.w],
         }
-        index = self.add_child(gltf_parent, gltf_node)
-        bone_prop = self.tree.prop_from_name(b.name)
-        if bone_prop:
+        index = self.add_gltf_node(gltf_parent, gltf_node)
+        vrm_bone = self.tree.vrm_from_name(b.name)
+        if vrm_bone:
             # bone node mapping
             self.gltf["extensions"][VRM_ANIMATION]["humanoid"]["humanBones"][
-                bone_prop
+                vrm_bone
             ] = {"node": index}
-            print(f"{b.name}: {bone_prop}")
+            # print(f"{b.name}: {bone_prop}")
         else:
             print(f"{b.name} not found")
 
-        for child in b.children:
-            self.traverse(child, gltf_node, indent=indent + "  ")
+        for child in self.tree.get_children(b):
+            self._traverse_tpose(child, gltf_node, indent=indent + "  ")
 
         return gltf_node
 
     def get_tpose(self, o: bpy.types.Object):
-        for bone in o.data.bones:
-            if not bone.parent:
-                self.traverse(bone, None, indent="")
+        hips = self.tree.bone_from_prop("hips")
+        self._traverse_tpose(hips, None, indent="")
 
     def get_current_pose(self, o: bpy.types.Object):
         pose = cast(bpy.types.Pose, o.pose)  # type: ignore
         with enter_pose(o):
             for b in pose.bones:
-                bone_prop = self.tree.prop_from_name(b.name)
-                if bone_prop:
+                vrm_bone = self.tree.vrm_from_name(b.name)
+                if vrm_bone:
                     init = b.bone.matrix
                     m = b.matrix
-                    if b.parent:
-                        m = b.parent.matrix.inverted() @ m
+                    parent = self.tree.get_parent(b)
+                    print(b, parent)
+                    if parent:
+                        m = parent.matrix.to_4x4().inverted() @ m
                     else:
+                        # pass
                         m = mathutils.Matrix.Rotation(math.radians(180.0), 4, "Z") @ m
                     t, r, s = m.decompose()
 
                     vrm_pose = self.gltf["extensions"][VRM_ANIMATION]["extensions"][
                         VRM_POSE
                     ]["humanoid"]
-                    vrm_pose["rotations"][bone_prop] = [r.x, r.y, r.z, r.w]
-                    if bone_prop == "hips":
+                    vrm_pose["rotations"][vrm_bone] = [r.x, r.y, r.z, r.w]
+                    if vrm_bone == "hips":
                         vrm_pose["translation"] = [
                             t.x * self.to_meter,
                             t.z * self.to_meter,
