@@ -9,63 +9,12 @@ from .enter_pose_mode import enter_pose
 VRM_ANIMATION = "VRMC_vrm_animation"
 VRM_POSE = "VRMC_vrm_pose"
 
-PROP_TO_HUMANBONE = {
-    "left_shoulder": "leftShoulder",
-    "left_upper_arm": "leftUpperArm",
-    "left_lower_arm": "leftLowerArm",
-    "left_hand": "leftHand",
-    "right_shoulder": "rightShoulder",
-    "right_upper_arm": "rightUpperArm",
-    "right_lower_arm": "rightLowerArm",
-    "right_hand": "rightHand",
-    "left_upper_leg": "leftUpperLeg",
-    "left_lower_leg": "leftLowerLeg",
-    "left_foot": "leftFoot",
-    "left_toes": "leftToes",
-    "right_upper_leg": "rightUpperLeg",
-    "right_lower_leg": "rightLowerLeg",
-    "right_foot": "rightFoot",
-    "right_toes": "rightToes",
-    "left_thumb_metacarpal": "leftThumbMetacarpal",
-    "left_thumb_proximal": "leftThumbProximal",
-    "left_thumb_distal": "leftThumbDistal",
-    "left_index_proximal": "leftIndexProximal",
-    "left_index_intermediate": "leftIndexIntermediate",
-    "left_index_distal": "leftIndexDistal",
-    "left_middle_proximal": "leftMiddleProximal",
-    "left_middle_intermediate": "leftMiddleIntermediate",
-    "left_middle_distal": "leftMiddleDistal",
-    "left_ring_proximal": "leftRingProximal",
-    "left_ring_intermediate": "leftRingIntermediate",
-    "left_ring_distal": "leftRingDistal",
-    "left_little_proximal": "leftLittleProximal",
-    "left_little_intermediate": "leftLittleIntermediate",
-    "left_little_distal": "leftLittleDistal",
-    "right_thumb_metacarpal": "rightThumbMetacarpal",
-    "right_thumb_proximal": "rightThumbProximal",
-    "right_thumb_distal": "rightThumbDistal",
-    "right_index_proximal": "rightIndexProximal",
-    "right_index_intermediate": "rightIndexIntermediate",
-    "right_index_distal": "rightIndexDistal",
-    "right_middle_proximal": "rightMiddleProximal",
-    "right_middle_intermediate": "rightMiddleIntermediate",
-    "right_middle_distal": "rightMiddleDistal",
-    "right_ring_proximal": "rightRingProximal",
-    "right_ring_intermediate": "rightRingIntermediate",
-    "right_ring_distal": "rightRingDistal",
-    "right_little_proximal": "rightLittleProximal",
-    "right_little_intermediate": "rightLittleIntermediate",
-    "right_little_distal": "rightLittleDistal",
-}
-
 
 class Builder:
     def __init__(self, armature: bpy.types.Armature, to_meter: float) -> None:
+        self.tree = humanoid_properties.HumanTree(armature)
         self.to_meter = to_meter
         assert isinstance(armature, bpy.types.Armature)
-        # custom property
-        self.humanoid_map = armature.humanoid
-        assert self.humanoid_map
 
         self.gltf = {
             "scene": 0,
@@ -105,15 +54,6 @@ class Builder:
             },
         }
 
-    def get_human_bone(self, bone_name: str) -> Optional[str]:
-        for prop in humanoid_properties.PROP_NAMES:
-            if getattr(self.humanoid_map, prop) == bone_name:
-                human_bone = PROP_TO_HUMANBONE.get(prop)
-                if human_bone:
-                    return human_bone
-                else:
-                    return prop
-
     def add_child(self, gltf_parent: Optional[dict], gltf_node: dict) -> int:
         index = len(self.gltf["nodes"])
         if not gltf_parent:
@@ -141,13 +81,13 @@ class Builder:
             "rotation": [r.x, r.y, r.z, r.w],
         }
         index = self.add_child(gltf_parent, gltf_node)
-        bone_name = self.get_human_bone(b.name)
-        if bone_name:
+        bone_prop = self.tree.prop_from_name(b.name)
+        if bone_prop:
             # bone node mapping
             self.gltf["extensions"][VRM_ANIMATION]["humanoid"]["humanBones"][
-                bone_name
+                bone_prop
             ] = {"node": index}
-            print(f"{b.name}: {bone_name}")
+            print(f"{b.name}: {bone_prop}")
         else:
             print(f"{b.name} not found")
 
@@ -165,8 +105,8 @@ class Builder:
         pose = cast(bpy.types.Pose, o.pose)  # type: ignore
         with enter_pose(o):
             for b in pose.bones:
-                human_bone = self.get_human_bone(b.name)
-                if human_bone:
+                bone_prop = self.tree.prop_from_name(b.name)
+                if bone_prop:
                     init = b.bone.matrix
                     m = b.matrix
                     if b.parent:
@@ -178,8 +118,8 @@ class Builder:
                     vrm_pose = self.gltf["extensions"][VRM_ANIMATION]["extensions"][
                         VRM_POSE
                     ]["humanoid"]
-                    vrm_pose["rotations"][human_bone] = [r.x, r.y, r.z, r.w]
-                    if human_bone == "hips":
+                    vrm_pose["rotations"][bone_prop] = [r.x, r.y, r.z, r.w]
+                    if bone_prop == "hips":
                         vrm_pose["translation"] = [
                             t.x * self.to_meter,
                             t.z * self.to_meter,

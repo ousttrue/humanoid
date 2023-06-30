@@ -55,6 +55,56 @@ PROP_NAMES = [
     "right_little_distal",
 ]
 
+# for VRM
+PROP_TO_HUMANBONE = {
+    "left_shoulder": "leftShoulder",
+    "left_upper_arm": "leftUpperArm",
+    "left_lower_arm": "leftLowerArm",
+    "left_hand": "leftHand",
+    "right_shoulder": "rightShoulder",
+    "right_upper_arm": "rightUpperArm",
+    "right_lower_arm": "rightLowerArm",
+    "right_hand": "rightHand",
+    "left_upper_leg": "leftUpperLeg",
+    "left_lower_leg": "leftLowerLeg",
+    "left_foot": "leftFoot",
+    "left_toes": "leftToes",
+    "right_upper_leg": "rightUpperLeg",
+    "right_lower_leg": "rightLowerLeg",
+    "right_foot": "rightFoot",
+    "right_toes": "rightToes",
+    "left_thumb_metacarpal": "leftThumbMetacarpal",
+    "left_thumb_proximal": "leftThumbProximal",
+    "left_thumb_distal": "leftThumbDistal",
+    "left_index_proximal": "leftIndexProximal",
+    "left_index_intermediate": "leftIndexIntermediate",
+    "left_index_distal": "leftIndexDistal",
+    "left_middle_proximal": "leftMiddleProximal",
+    "left_middle_intermediate": "leftMiddleIntermediate",
+    "left_middle_distal": "leftMiddleDistal",
+    "left_ring_proximal": "leftRingProximal",
+    "left_ring_intermediate": "leftRingIntermediate",
+    "left_ring_distal": "leftRingDistal",
+    "left_little_proximal": "leftLittleProximal",
+    "left_little_intermediate": "leftLittleIntermediate",
+    "left_little_distal": "leftLittleDistal",
+    "right_thumb_metacarpal": "rightThumbMetacarpal",
+    "right_thumb_proximal": "rightThumbProximal",
+    "right_thumb_distal": "rightThumbDistal",
+    "right_index_proximal": "rightIndexProximal",
+    "right_index_intermediate": "rightIndexIntermediate",
+    "right_index_distal": "rightIndexDistal",
+    "right_middle_proximal": "rightMiddleProximal",
+    "right_middle_intermediate": "rightMiddleIntermediate",
+    "right_middle_distal": "rightMiddleDistal",
+    "right_ring_proximal": "rightRingProximal",
+    "right_ring_intermediate": "rightRingIntermediate",
+    "right_ring_distal": "rightRingDistal",
+    "right_little_proximal": "rightLittleProximal",
+    "right_little_intermediate": "rightLittleIntermediate",
+    "right_little_distal": "rightLittleDistal",
+}
+
 
 class Node(NamedTuple):
     prop: str
@@ -184,6 +234,23 @@ def get_parent(prop: str) -> Optional[str]:
     found = find_parent(TREE)
     if found:
         return found.prop
+
+
+class HumanTree:
+    def __init__(self, armature: bpy.types.Armature) -> None:
+        self.armature = armature
+        # custom property
+        self.humanoid_map = armature.humanoid
+        assert self.humanoid_map
+
+    def prop_from_name(self, bone_name: str) -> Optional[str]:
+        for prop in PROP_NAMES:
+            if getattr(self.humanoid_map, prop) == bone_name:
+                human_bone = PROP_TO_HUMANBONE.get(prop)
+                if human_bone:
+                    return human_bone
+                else:
+                    return prop
 
 
 class HumanoidProperties(bpy.types.PropertyGroup):
