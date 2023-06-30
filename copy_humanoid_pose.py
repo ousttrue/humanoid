@@ -125,10 +125,17 @@ class Builder:
         self.gltf["nodes"].append(gltf_node)
         return index
 
-    def traverse(self, b, gltf_parent, *, indent: str):
+    def _traverse_tpose(
+        self,
+        b: bpy.types.Bone,
+        parent: Optional[bpy.types.Bone],
+        gltf_parent,
+        *,
+        indent: str,
+    ):
         m = b.matrix_local
-        if b.parent:
-            m = b.parent.matrix_local.inverted() @ m
+        if parent:
+            m = parent.matrix_local.inverted() @ m
         t, r, s = m.decompose()
         print(f"{indent}{b}: {t} {r}")
         gltf_node = {
@@ -152,14 +159,14 @@ class Builder:
             print(f"{b.name} not found")
 
         for child in b.children:
-            self.traverse(child, gltf_node, indent=indent + "  ")
+            self._traverse_tpose(child, b, gltf_node, indent=indent + "  ")
 
         return gltf_node
 
     def get_tpose(self, o: bpy.types.Object):
         for bone in o.data.bones:
             if not bone.parent:
-                self.traverse(bone, None, indent="")
+                self._traverse_tpose(bone, None, None, indent="")
 
     def get_current_pose(self, o: bpy.types.Object):
         pose = cast(bpy.types.Pose, o.pose)  # type: ignore
