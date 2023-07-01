@@ -410,29 +410,57 @@ def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
     bend = armature.edit_bones.new(bend_name)
     bend.parent = hand
     bend.use_connect = False
+    delta = 0.01 if proximal.head.x > 0 else -0.01
     bend.head = proximal.head
+    bend.head.x += delta
     bend.head.z += 0.02
     bend.tail = bend.head
-    bend.tail.x = distal.tail.x
+    bend.tail.x = distal.tail.x + delta
+
     bend.roll = proximal.roll
 
-    def copy_rot(src_name: str, dst_name: str):
+    def copy_rot(
+        src_name: str,
+        dst_name: str,
+        scale_min: Optional[float] = None,
+        scale_range: float = 0.3,
+    ):
         armature.bones.active = armature.bones[dst_name]
         bpy.ops.pose.constraint_add(type="COPY_ROTATION")
-        c = obj.pose.bones[dst_name].constraints["Copy Rotation"]
+        pose_bone = obj.pose.bones[dst_name]
+        c = pose_bone.constraints["Copy Rotation"]
         c.target = obj
         c.subtarget = src_name
         c.target_space = "LOCAL"
         c.owner_space = "LOCAL"
 
+        if scale_min:
+            # scale influence
+            scale_max = scale_min + scale_range
+            driver = c.driver_add("influence")
+            driver.driver.type = "SCRIPTED"
+            var = driver.driver.variables.new()
+            var.name = "var"
+            var.type = "SINGLE_PROP"
+            var.targets[0].id = obj
+            var.targets[0].data_path = f'pose.bones["{src_name}"].scale[1]'
+            driver.driver.expression = (
+                f"({scale_max} - min(max(var, {scale_min}), {scale_max})) * 6"
+            )
+
     with enter_pose(obj):
         bend_pose = obj.pose.bones[bend_name]
         bend_pose.rotation_mode = "ZYX"
+        bend_pose.lock_location[0] = True
+        bend_pose.lock_location[1] = True
+        bend_pose.lock_location[2] = True
         bend_pose.lock_rotation[1] = True
         bend_pose.lock_rotation[2] = True
+        bend_pose.lock_scale[0] = True
+        bend_pose.lock_scale[2] = True
         copy_rot(bend_name, proximal_name)
-        copy_rot(bend_name, intermediate_name)
-        copy_rot(bend_name, distal_name)
+        copy_rot(bend_name, intermediate_name, 0.7, 0.3)
+        copy_rot(bend_name, distal_name, 0.4, 0.3)
 
 
 def create(context, rig: bool):
@@ -535,6 +563,7 @@ def create(context, rig: bool):
         with enter_pose(obj):
             for b in obj.pose.bones:
                 b.rotation_mode = "ZYX"
+                b.lock_scale = [True, True, True]
                 if is_limb(b.name):
                     b.lock_rotation[1] = True
                     b.lock_rotation[2] = True
