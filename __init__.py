@@ -1,10 +1,11 @@
 bl_info = {
     "name": "Humanoid",
     "blender": (3, 5, 0),
-    "category": "Object",
+    "category": "Rigging",
     "description": "Create default armarture and copy pose to clipboard as VRMC_vrm_pose",
     "author": "ousttrue",
-    "version": (2, 0, 0),
+    "version": (2, 1, 0),
+    "wiki_url": "https://github.com/ousttrue/humanoid",
 }
 
 import bpy

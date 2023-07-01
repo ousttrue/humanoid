@@ -10,10 +10,17 @@
 
 ### property
 
-- rig: true にするとポージング用の Rig を追加しいます
-  - InvertedPelvis( hips が隠蔽されて下向きの pelvis 移動用の COG が追加されます)
+- rig: true にするとポージング用の Rig を追加します。
+  - InvertedPelvis( hips が隠蔽されて下向きの pelvis に置き換わり、 その親に COG が追加されます)
   - LegIk
   - ArmIk
+  - HandConroler
+    - finger bend(rot, scale)
+    - finger spread(rot)
+
+![humanoid_rig](./humanoid_rig.jpg)
+
+`boneWidget` で一部をカスタムシェイプ化。
 
 ## Humanoid Panel
 
