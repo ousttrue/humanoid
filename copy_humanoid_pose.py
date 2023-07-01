@@ -146,7 +146,7 @@ class Builder:
 
 class CopyHumanoidPose(bpy.types.Operator):
     bl_idname = "humanoid.copy_pose"
-    bl_label = "Copy Humanoid Pose"
+    bl_label = "Copy Pose To Clipboard"
     bl_options = {"REGISTER", "UNDO"}
 
     @classmethod

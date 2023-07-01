@@ -373,7 +373,23 @@ def make_arm_ik(obj: bpy.types.Object, suffix: str):
         c.subtarget = ik_name
 
 
-def create(context):
+def is_limb(bone: str) -> bool:
+    if bone.startswith("LowerArm"):
+        return True
+    if bone.startswith("LowerLeg"):
+        return True
+    if "Metacarpal" in bone:
+        return True
+    if "Proximal" in bone:
+        return True
+    if "Intermediate" in bone:
+        return True
+    if "Distal" in bone:
+        return True
+    return False
+
+
+def create(context, rig: bool):
     armature: bpy.types.Armature = bpy.data.armatures.new("Humanoid")
     obj = bpy.data.objects.new("Humanoid", armature)
     context.scene.collection.objects.link(obj)
@@ -468,35 +484,20 @@ def create(context):
     armature.humanoid.right_little_intermediate = "LittleIntermediate.R"
     armature.humanoid.right_little_distal = "LittleDistal.R"
 
-    def is_limb(bone: str) -> bool:
-        if bone.startswith("LowerArm"):
-            return True
-        if bone.startswith("LowerLeg"):
-            return True
-        if "Metacarpal" in bone:
-            return True
-        if "Proximal" in bone:
-            return True
-        if "Intermediate" in bone:
-            return True
-        if "Distal" in bone:
-            return True
-        return False
+    if rig:
+        # setup rig
+        with enter_pose(obj):
+            for b in obj.pose.bones:
+                b.rotation_mode = "ZYX"
+                if is_limb(b.name):
+                    b.lock_rotation[1] = True
+                    b.lock_rotation[2] = True
 
-    with enter_pose(obj):
-        for b in obj.pose.bones:
-            b.rotation_mode = "ZYX"
-            if is_limb(b.name):
-                b.lock_rotation[1] = True
-                b.lock_rotation[2] = True
-
-    # setup rig
-    # to object mode
-    make_inverted_pelvis(obj)
-    make_leg_ik(obj, ".L")
-    make_leg_ik(obj, ".R")
-    make_arm_ik(obj, ".L")
-    make_arm_ik(obj, ".R")
+        make_inverted_pelvis(obj)
+        make_leg_ik(obj, ".L")
+        make_leg_ik(obj, ".R")
+        make_arm_ik(obj, ".L")
+        make_arm_ik(obj, ".R")
 
     # to object mode
     mode = context.object.mode
@@ -509,15 +510,17 @@ class CreateHumanoid(bpy.types.Operator):
     """CreateHumanoidArmature"""
 
     bl_idname = "humanoid.create"
-    bl_label = "Create Humanoid Armature"
+    bl_label = "Create Humanoid"
     bl_options = {"REGISTER", "UNDO"}
     bl_icon = "OUTLINER_OB_ARMATURE"
     bl_menu = "VIEW3D_MT_armature_add"
+
+    rig: bpy.props.BoolProperty()
 
     @classmethod
     def poll(cls, context):
         return context.mode == "OBJECT"
 
     def execute(self, context):
-        create(context)
+        create(context, self.rig)
         return {"FINISHED"}
