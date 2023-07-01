@@ -446,7 +446,7 @@ def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
             c.use_y = False
             c.use_z = False
             # scale influence
-            factor = 1/scale_range
+            factor = 1 / scale_range
             scale_max = scale_min + scale_range
             driver = c.driver_add("influence")
             driver.driver.type = "SCRIPTED"
@@ -466,9 +466,8 @@ def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
         bend_pose.lock_location[1] = True
         bend_pose.lock_location[2] = True
         if finger_name == "Thumb":
-            factor = 10
+            bend_pose.lock_rotation[1] = True
         else:
-            factor = 6
             bend_pose.lock_rotation[1] = True
             bend_pose.lock_rotation[2] = True
         bend_pose.lock_scale[0] = True
@@ -485,6 +484,59 @@ def make_hand_rig(obj, suffix: str):
     make_finger_bend(obj, "Ring", suffix)
     make_finger_bend(obj, "Little", suffix)
     make_finger_bend(obj, "Thumb", suffix)
+
+    mode = bpy.context.object.mode
+    if mode != "EDIT":
+        print(f"enter EDIT mode from {mode} mode")
+        bpy.ops.object.mode_set(mode="EDIT")
+    armature = cast(bpy.types.Armature, obj.data)
+
+    hand_name = f"Hand{suffix}"
+    spread_name = f"Spread{suffix}"
+    little_proximal_name = f"LittleProximal{suffix}"
+    little_distal_name = f"LittleDistal{suffix}"
+
+    hand = armature.edit_bones[hand_name]
+    ring_proximal = armature.edit_bones[little_proximal_name]
+    ring_distal = armature.edit_bones[little_distal_name]
+    spread = armature.edit_bones.new(spread_name)
+    spread.parent = hand
+    spread.use_connect = False
+    spread.head = ring_proximal.head
+    spread.head.y += 0.02
+    spread.head.z += 0.02
+    spread.tail = ring_distal.tail
+    spread.tail.y += 0.02
+    spread.tail.z += 0.02
+    spread.roll = ring_proximal.roll
+
+    def copy_rot2bend(src_name: str, dst_name: str, influence: float):
+        armature.bones.active = armature.bones[dst_name]
+        bpy.ops.pose.constraint_add(type="TRANSFORM")
+        pose_bone = obj.pose.bones[dst_name]
+        c = pose_bone.constraints["Transformation"]
+        c.target = obj
+        c.subtarget = src_name
+        c.target_space = "LOCAL"
+        c.owner_space = "LOCAL"
+
+        c.map_from = "ROTATION"
+        c.from_min_z_rot = -1.5  # about pi/2
+        c.from_max_z_rot = 1.5
+
+        c.map_to = "ROTATION"
+        c.to_min_z_rot = -1.5 * influence
+        c.to_max_z_rot = 1.5 * influence
+        c.mix_mode_rot = "BEFORE"
+
+    with enter_pose(obj):
+        spread_pose = obj.pose.bones[spread_name]
+        spread_pose.rotation_mode = "ZYX"
+        spread_pose.lock_rotation = [True, True, False]
+        copy_rot2bend(spread_name, f"BendIndex{suffix}", -0.65)
+        # copy_rot2bend(spread_name, f'BendMiddle{suffix}')
+        copy_rot2bend(spread_name, f"BendRing{suffix}", 0.65)
+        copy_rot2bend(spread_name, f"BendLittle{suffix}", 1)
 
 
 def create(context, rig: bool):
