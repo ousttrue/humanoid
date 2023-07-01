@@ -398,8 +398,12 @@ def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
     armature = cast(bpy.types.Armature, obj.data)
 
     hand_name = f"Hand{suffix}"
-    proximal_name = f"{finger_name}Proximal{suffix}"
-    intermediate_name = f"{finger_name}Intermediate{suffix}"
+    if finger_name == "Thumb":
+        proximal_name = f"{finger_name}Metacarpal{suffix}"
+        intermediate_name = f"{finger_name}Proximal{suffix}"
+    else:
+        proximal_name = f"{finger_name}Proximal{suffix}"
+        intermediate_name = f"{finger_name}Intermediate{suffix}"
     distal_name = f"{finger_name}Distal{suffix}"
     bend_name = f"Bend{finger_name}{suffix}"
 
@@ -413,16 +417,19 @@ def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
     delta = 0.01 if proximal.head.x > 0 else -0.01
     bend.head = proximal.head
     bend.head.x += delta
-    bend.head.z += 0.02
+    if finger_name == "Thumb":
+        bend.head.y -= 0.02
+    else:
+        bend.head.z += 0.02
     bend.tail = bend.head
     bend.tail.x = distal.tail.x + delta
-
     bend.roll = proximal.roll
 
     def copy_rot(
         src_name: str,
         dst_name: str,
         scale_min: Optional[float] = None,
+        *,
         scale_range: float = 0.3,
     ):
         armature.bones.active = armature.bones[dst_name]
@@ -435,7 +442,11 @@ def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
         c.owner_space = "LOCAL"
 
         if scale_min:
+            # for Intermediate & Distal
+            c.use_y = False
+            c.use_z = False
             # scale influence
+            factor = 1/scale_range
             scale_max = scale_min + scale_range
             driver = c.driver_add("influence")
             driver.driver.type = "SCRIPTED"
@@ -445,7 +456,7 @@ def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
             var.targets[0].id = obj
             var.targets[0].data_path = f'pose.bones["{src_name}"].scale[1]'
             driver.driver.expression = (
-                f"({scale_max} - min(max(var, {scale_min}), {scale_max})) * 6"
+                f"({scale_max} - min(max(var, {scale_min}), {scale_max})) * {factor}"
             )
 
     with enter_pose(obj):
@@ -454,13 +465,26 @@ def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
         bend_pose.lock_location[0] = True
         bend_pose.lock_location[1] = True
         bend_pose.lock_location[2] = True
-        bend_pose.lock_rotation[1] = True
-        bend_pose.lock_rotation[2] = True
+        if finger_name == "Thumb":
+            factor = 10
+        else:
+            factor = 6
+            bend_pose.lock_rotation[1] = True
+            bend_pose.lock_rotation[2] = True
         bend_pose.lock_scale[0] = True
         bend_pose.lock_scale[2] = True
+
         copy_rot(bend_name, proximal_name)
-        copy_rot(bend_name, intermediate_name, 0.7, 0.3)
-        copy_rot(bend_name, distal_name, 0.4, 0.3)
+        copy_rot(bend_name, intermediate_name, 0.7, scale_range=0.3)
+        copy_rot(bend_name, distal_name, 0.4, scale_range=0.3)
+
+
+def make_hand_rig(obj, suffix: str):
+    make_finger_bend(obj, "Index", suffix)
+    make_finger_bend(obj, "Middle", suffix)
+    make_finger_bend(obj, "Ring", suffix)
+    make_finger_bend(obj, "Little", suffix)
+    make_finger_bend(obj, "Thumb", suffix)
 
 
 def create(context, rig: bool):
@@ -573,14 +597,8 @@ def create(context, rig: bool):
         make_leg_ik(obj, ".R")
         make_arm_ik(obj, ".L")
         make_arm_ik(obj, ".R")
-        make_finger_bend(obj, "Index", ".L")
-        make_finger_bend(obj, "Middle", ".L")
-        make_finger_bend(obj, "Ring", ".L")
-        make_finger_bend(obj, "Little", ".L")
-        make_finger_bend(obj, "Index", ".R")
-        make_finger_bend(obj, "Middle", ".R")
-        make_finger_bend(obj, "Ring", ".R")
-        make_finger_bend(obj, "Little", ".R")
+        make_hand_rig(obj, ".L")
+        make_hand_rig(obj, ".R")
 
     # to object mode
     mode = context.object.mode
