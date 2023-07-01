@@ -389,6 +389,52 @@ def is_limb(bone: str) -> bool:
     return False
 
 
+def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
+    mode = bpy.context.object.mode
+    if mode != "EDIT":
+        print(f"enter EDIT mode from {mode} mode")
+        bpy.ops.object.mode_set(mode="EDIT")
+
+    armature = cast(bpy.types.Armature, obj.data)
+
+    hand_name = f"Hand{suffix}"
+    proximal_name = f"{finger_name}Proximal{suffix}"
+    intermediate_name = f"{finger_name}Intermediate{suffix}"
+    distal_name = f"{finger_name}Distal{suffix}"
+    bend_name = f"Bend{finger_name}{suffix}"
+
+    hand = armature.edit_bones[hand_name]
+    proximal = armature.edit_bones[proximal_name]
+    distal = armature.edit_bones[distal_name]
+
+    bend = armature.edit_bones.new(bend_name)
+    bend.parent = hand
+    bend.use_connect = False
+    bend.head = proximal.head
+    bend.head.z += 0.02
+    bend.tail = bend.head
+    bend.tail.x = distal.tail.x
+    bend.roll = proximal.roll
+
+    def copy_rot(src_name: str, dst_name: str):
+        armature.bones.active = armature.bones[dst_name]
+        bpy.ops.pose.constraint_add(type="COPY_ROTATION")
+        c = obj.pose.bones[dst_name].constraints["Copy Rotation"]
+        c.target = obj
+        c.subtarget = src_name
+        c.target_space = "LOCAL"
+        c.owner_space = "LOCAL"
+
+    with enter_pose(obj):
+        bend_pose = obj.pose.bones[bend_name]
+        bend_pose.rotation_mode = "ZYX"
+        bend_pose.lock_rotation[1] = True
+        bend_pose.lock_rotation[2] = True
+        copy_rot(bend_name, proximal_name)
+        copy_rot(bend_name, intermediate_name)
+        copy_rot(bend_name, distal_name)
+
+
 def create(context, rig: bool):
     armature: bpy.types.Armature = bpy.data.armatures.new("Humanoid")
     obj = bpy.data.objects.new("Humanoid", armature)
@@ -498,6 +544,14 @@ def create(context, rig: bool):
         make_leg_ik(obj, ".R")
         make_arm_ik(obj, ".L")
         make_arm_ik(obj, ".R")
+        make_finger_bend(obj, "Index", ".L")
+        make_finger_bend(obj, "Middle", ".L")
+        make_finger_bend(obj, "Ring", ".L")
+        make_finger_bend(obj, "Little", ".L")
+        make_finger_bend(obj, "Index", ".R")
+        make_finger_bend(obj, "Middle", ".R")
+        make_finger_bend(obj, "Ring", ".R")
+        make_finger_bend(obj, "Little", ".R")
 
     # to object mode
     mode = context.object.mode
