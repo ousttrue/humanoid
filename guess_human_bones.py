@@ -2,6 +2,63 @@ import bpy
 from .humanoid_properties import PROP_NAMES
 from typing import Optional
 
+VRM_MAP = {
+    "hips": "hips",
+    "spine": "spine",
+    "chest": "chest",
+    "upper_chest": "upperChest",
+    "neck": "neck",
+    "head": "head",
+    "left_shoulder": "leftShoulder",
+    "left_upper_arm": "leftUpperArm",
+    "left_lower_arm": "leftLowerArm",
+    "left_hand": "leftHand",
+    "right_shoulder": "rightShoulder",
+    "right_upper_arm": "rightUpperArm",
+    "right_lower_arm": "rightLowerArm",
+    "right_hand": "rightHand",
+    #
+    "left_upper_leg": "leftUpperLeg",
+    "left_lower_leg": "leftLowerLeg",
+    "left_foot": "leftFoot",
+    "left_toes": "leftToes",
+    "right_upper_leg": "rightUpperLeg",
+    "right_lower_leg": "rightLowerLeg",
+    "right_foot": "rightFoot",
+    "right_toes": "rightToes",
+    #
+    "left_thumb_metacarpal": "leftThumbProximal",
+    "left_thumb_proximal": "leftThumbIntermediate",
+    "left_thumb_distal": "leftThumbDistal",
+    "left_index_proximal": "leftIndexProximal",
+    "left_index_intermediate": "leftIndexIntermediate",
+    "left_index_distal": "leftIndexDistal",
+    "left_middle_proximal": "leftMiddleProximal",
+    "left_middle_intermediate": "leftMiddleIntermediate",
+    "left_middle_distal": "leftMiddleDistal",
+    "left_ring_proximal": "leftRingProximal",
+    "left_ring_intermediate": "leftRingIntermediate",
+    "left_ring_distal": "leftRingDistal",
+    "left_little_proximal": "leftLittleProximal",
+    "left_little_intermediate": "leftLittleIntermediate",
+    "left_little_distal": "leftLittleDistal",
+    #
+    "right_thumb_metacarpal": "rightThumbProximal",
+    "right_thumb_proximal": "rightThumbIntermediate",
+    "right_thumb_distal": "rightThumbDistal",
+    "right_index_proximal": "rightIndexProximal",
+    "right_index_intermediate": "rightIndexIntermediate",
+    "right_index_distal": "rightIndexDistal",
+    "right_middle_proximal": "rightMiddleProximal",
+    "right_middle_intermediate": "rightMiddleIntermediate",
+    "right_middle_distal": "rightMiddleDistal",
+    "right_ring_proximal": "rightRingProximal",
+    "right_ring_intermediate": "rightRingIntermediate",
+    "right_ring_distal": "rightRingDistal",
+    "right_little_proximal": "rightLittleProximal",
+    "right_little_intermediate": "rightLittleIntermediate",
+    "right_little_distal": "rightLittleDistal",
+}
 
 RIGIFY_MAP = {
     "hips": "torso",
@@ -63,6 +120,25 @@ RIGIFY_MAP = {
 
 
 def guess_bone(armature: bpy.types.Armature, prop: str) -> Optional[str]:
+    if hasattr(armature, "vrm_addon_extension"):
+        vrm = armature.vrm_addon_extension
+        if hasattr(vrm, "vrm0"):
+            vrm0 = vrm.vrm0
+            if hasattr(vrm0, "humanoid"):
+                humanoid = vrm0.humanoid
+                vrm_bone_name = VRM_MAP.get(prop)
+                for b in humanoid.human_bones:
+                    name = b.node.get_bone_name()
+                    # print(prop, name, b.bone)
+                    if b.bone == vrm_bone_name:
+                        return name
+        raise f"{prop} not found"
+
+    bone_name = RIGIFY_MAP.get(prop)
+    if bone_name in armature.bones:
+        return bone_name
+
+    # fall back. name based search
     tokens = prop.split("_")
     search = tokens[-1].lower()
 
@@ -78,10 +154,6 @@ def guess_bone(armature: bpy.types.Armature, prop: str) -> Optional[str]:
             for f in found:
                 if "right" in f.lower():
                     return f
-
-    bone_name = RIGIFY_MAP.get(prop)
-    if bone_name:
-        return bone_name
 
 
 class GuessHumanBones(bpy.types.Operator):
