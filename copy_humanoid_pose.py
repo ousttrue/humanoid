@@ -116,7 +116,7 @@ class Builder:
         if parent:
             m = parent.matrix.inverted() @ m
         else:
-            m = mathutils.Matrix.Rotation(math.radians(180.0), 4, "Z") @ m
+            pass
         t, r, s = m.decompose()
 
         vrm_pose = self.gltf["extensions"][VRM_ANIMATION]["extensions"][VRM_POSE][
@@ -126,8 +126,8 @@ class Builder:
         if human_bone == "hips":
             vrm_pose["translation"] = [
                 t.x * self.to_meter,
-                t.z * self.to_meter,
                 t.y * self.to_meter,
+                t.z * self.to_meter,
             ]
 
         for child_name in self.tree.child_bone_names_from_name(b.name):
