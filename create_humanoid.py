@@ -74,6 +74,20 @@ class Bone(NamedTuple):
         return bone
 
 
+def get_or_create_bone_group(
+    armature: bpy.types.Armature, name: str, theme: str
+) -> bpy.types.BoneGroup:
+    if name not in armature.pose.bone_groups:
+        group = armature.pose.bone_groups.new(name=name)
+        group.color_set = theme  # "THEME05"
+    return armature.pose.bone_groups[name]
+
+
+def set_bone_group(obj, bone_name: str, group_name: str, theme: str):
+    group = get_or_create_bone_group(obj, group_name, theme)
+    obj.pose.bones[bone_name].bone_group = group
+
+
 def get_finger(name: str, lr: float, y: float) -> Bone:
     """
     手首から指: 10
@@ -248,7 +262,7 @@ def make_inverted_pelvis(obj: bpy.types.Object):
     armature = cast(bpy.types.Armature, obj.data)
 
     cog = armature.edit_bones.new("COG")
-    cog.parent = armature.edit_bones["root"]
+    cog.parent = armature.edit_bones["Root"]
     cog.head = armature.edit_bones["Spine"].head
     cog.tail = (cog.head.x, cog.head.y + 0.4, cog.head.z)
 
@@ -260,6 +274,16 @@ def make_inverted_pelvis(obj: bpy.types.Object):
 
     armature.edit_bones["Hips"].parent = pelvis
     with enter_pose(obj):
+        set_bone_group(obj, 'Root', "Rig", "THEME05")
+        set_bone_group(obj, 'COG', "Rig", "THEME05")
+        set_bone_group(obj, 'Pelvis', "Rig", "THEME05")
+        set_bone_group(obj, 'Spine', "Rig", "THEME05")
+        set_bone_group(obj, 'Chest', "Rig", "THEME05")
+        set_bone_group(obj, 'Neck', "Rig", "THEME05")
+        set_bone_group(obj, 'Head', "Rig", "THEME05")
+        set_bone_group(obj, 'Toes.L', "Rig", "THEME05")
+        set_bone_group(obj, 'Toes.R', "Rig", "THEME05")
+
         hips = obj.pose.bones["Hips"]
         hips.lock_rotation = (True, True, True)
         hips.lock_scale = (True, True, True)
@@ -284,7 +308,7 @@ def make_leg_ik(obj: bpy.types.Object, suffix: str):
 
     ik_head = armature.edit_bones[foot_name].head
     ik = armature.edit_bones.new(ik_name)
-    ik.parent = armature.edit_bones["root"]
+    ik.parent = armature.edit_bones["Root"]
     ik.use_connect = False
     ik.head = ik_head
     ik.tail = (ik_head.x, ik_head.y + 0.2, ik_head.z)
@@ -316,6 +340,9 @@ def make_leg_ik(obj: bpy.types.Object, suffix: str):
         c.pole_subtarget = pole_name
         c.pole_angle = math.pi * (-90) / 180
         c.chain_count = 2
+        set_bone_group(obj, ik_name, "Rig", "THEME05")
+        set_bone_group(obj, pole_name, "Rig", "THEME05")
+
         # FootCopy
         armature.bones.active = armature.bones[foot_name]
         bpy.ops.pose.constraint_add(type="COPY_ROTATION")
@@ -339,7 +366,7 @@ def make_arm_ik(obj: bpy.types.Object, suffix: str):
 
     hand = armature.edit_bones[hand_name]
     ik = armature.edit_bones.new(ik_name)
-    ik.parent = armature.edit_bones["root"]
+    ik.parent = armature.edit_bones["COG"]
     ik.use_connect = False
     ik.head = hand.head
     ik.tail = hand.tail
@@ -365,6 +392,9 @@ def make_arm_ik(obj: bpy.types.Object, suffix: str):
         c.pole_subtarget = pole_name
         c.pole_angle = math.pi * (-90) / 180
         c.chain_count = 2
+        set_bone_group(obj, ik_name, "Rig", "THEME05")
+        set_bone_group(obj, pole_name, "Rig", "THEME05")
+
         # HandCopy
         armature.bones.active = armature.bones[hand_name]
         bpy.ops.pose.constraint_add(type="COPY_ROTATION")
@@ -440,6 +470,7 @@ def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
         c.subtarget = src_name
         c.target_space = "LOCAL"
         c.owner_space = "LOCAL"
+        set_bone_group(obj, src_name, "Rig", "THEME05")
 
         if scale_min:
             # for Intermediate & Distal
@@ -529,6 +560,8 @@ def make_hand_rig(obj, suffix: str):
         c.to_max_z_rot = 1.5 * influence
         c.mix_mode_rot = "BEFORE"
 
+        set_bone_group(obj, src_name, "Rig", "THEME05")
+
     with enter_pose(obj):
         spread_pose = obj.pose.bones[spread_name]
         spread_pose.rotation_mode = "ZYX"
@@ -560,7 +593,7 @@ def create(context, rig: bool):
     humanoid = get_humanoid(1.6)
 
     # root
-    root = get_or_create_bone(armature, "root")
+    root = get_or_create_bone(armature, "Root")
     root.tail = (0, 1, 0)
     humanoid.create(armature, root)
 
