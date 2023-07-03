@@ -114,20 +114,19 @@ def get_finger(name: str, lr: float, y: float) -> Bone:
     )
 
 
-def get_thumb(x: float, y: float, z: float) -> Bone:
-    base = x / 10
+def get_thumb(x, y, z) -> Bone:
     return Bone(
         f"ThumbMetacarpal",
-        (base * 3, y, z),
+        (0, 0, -0.02),
         [
             Bone(
                 f"ThumbProximal",
-                (base * 5, 0, 0),
+                (x * 5, y * 5, z * 5),
                 [
                     Bone(
                         f"ThumbDistal",
-                        (base * 3, 0, 0),
-                        [Bone("tip", (base * 2, 0, 0))],
+                        (x * 3, y * 3, z * 3),
+                        [Bone("tip", (x * 2, y * 2, z * 2))],
                     )
                 ],
             )
@@ -154,10 +153,10 @@ def get_arm(lr: float) -> Bone:
                                 (lr * 2, 0, 0),
                                 [
                                     get_finger("Middle", f, 0),
-                                    get_finger("Index", f, -0.02),
-                                    get_finger("Ring", f * 0.9, 0.02),
-                                    get_finger("Little", f * 0.8, 0.03),
-                                    get_thumb(f, -0.03, -0.02),
+                                    get_finger("Index", f, -0.015),
+                                    get_finger("Ring", f, 0.015),
+                                    get_finger("Little", f, 0.03),
+                                    get_thumb(f / 10, -abs(f / 10), 0),
                                 ],
                             )
                         ],
@@ -274,15 +273,15 @@ def make_inverted_pelvis(obj: bpy.types.Object):
 
     armature.edit_bones["Hips"].parent = pelvis
     with enter_pose(obj):
-        set_bone_group(obj, 'Root', "Rig", "THEME05")
-        set_bone_group(obj, 'COG', "Rig", "THEME05")
-        set_bone_group(obj, 'Pelvis', "Rig", "THEME05")
-        set_bone_group(obj, 'Spine', "Rig", "THEME05")
-        set_bone_group(obj, 'Chest', "Rig", "THEME05")
-        set_bone_group(obj, 'Neck', "Rig", "THEME05")
-        set_bone_group(obj, 'Head', "Rig", "THEME05")
-        set_bone_group(obj, 'Toes.L', "Rig", "THEME05")
-        set_bone_group(obj, 'Toes.R', "Rig", "THEME05")
+        set_bone_group(obj, "Root", "Rig", "THEME05")
+        set_bone_group(obj, "COG", "Rig", "THEME05")
+        set_bone_group(obj, "Pelvis", "Rig", "THEME05")
+        set_bone_group(obj, "Spine", "Rig", "THEME05")
+        set_bone_group(obj, "Chest", "Rig", "THEME05")
+        set_bone_group(obj, "Neck", "Rig", "THEME05")
+        set_bone_group(obj, "Head", "Rig", "THEME05")
+        set_bone_group(obj, "Toes.L", "Rig", "THEME05")
+        set_bone_group(obj, "Toes.R", "Rig", "THEME05")
 
         hips = obj.pose.bones["Hips"]
         hips.lock_rotation = (True, True, True)
@@ -446,14 +445,14 @@ def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
     bend.use_connect = False
     delta = 0.01 if proximal.head.x > 0 else -0.01
     bend.head = proximal.head
-    bend.head.x += delta
+    bend.tail = distal.tail
+    bend.roll = proximal.roll
     if finger_name == "Thumb":
         bend.head.y -= 0.02
+        bend.tail.y -= 0.02
     else:
         bend.head.z += 0.02
-    bend.tail = bend.head
-    bend.tail.x = distal.tail.x + delta
-    bend.roll = proximal.roll
+        bend.tail.z += 0.02
 
     def copy_rot(
         src_name: str,
@@ -490,6 +489,48 @@ def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
                 f"({scale_max} - min(max(var, {scale_min}), {scale_max})) * {factor}"
             )
 
+    def copy_rot_3(
+        src_name: str,
+        dst_name: str,
+        scale_min: Optional[float] = None,
+        *,
+        scale_range: float = 0.3,
+    ):
+        armature.bones.active = armature.bones[dst_name]
+        bpy.ops.pose.constraint_add(type="TRANSFORM")
+        pose_bone = obj.pose.bones[dst_name]
+        c = pose_bone.constraints["Transformation"]
+        c.target = obj
+        c.subtarget = src_name
+        c.target_space = "LOCAL"
+        c.owner_space = "LOCAL"
+
+        c.map_from = "ROTATION"
+        c.from_min_x_rot = -1
+        c.from_max_x_rot = 1
+
+        c.map_to = "ROTATION"
+        c.to_min_x_rot = -3
+        c.to_max_x_rot = 3
+        c.mix_mode_rot = "BEFORE"
+
+        set_bone_group(obj, src_name, "Rig", "THEME05")
+
+        if scale_min:
+            # scale influence
+            factor = 1 / scale_range
+            scale_max = scale_min + scale_range
+            driver = c.driver_add("influence")
+            driver.driver.type = "SCRIPTED"
+            var = driver.driver.variables.new()
+            var.name = "var"
+            var.type = "SINGLE_PROP"
+            var.targets[0].id = obj
+            var.targets[0].data_path = f'pose.bones["{src_name}"].scale[1]'
+            driver.driver.expression = (
+                f"({scale_max} - min(max(var, {scale_min}), {scale_max})) * {factor}"
+            )
+
     with enter_pose(obj):
         bend_pose = obj.pose.bones[bend_name]
         bend_pose.rotation_mode = "ZYX"
@@ -505,8 +546,12 @@ def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
         bend_pose.lock_scale[2] = True
 
         copy_rot(bend_name, proximal_name)
-        copy_rot(bend_name, intermediate_name, 0.7, scale_range=0.3)
-        copy_rot(bend_name, distal_name, 0.4, scale_range=0.3)
+        if finger_name == "Thumb":
+            copy_rot_3(bend_name, intermediate_name, 0.7, scale_range=0.3)
+            copy_rot_3(bend_name, distal_name, 0.4, scale_range=0.3)
+        else:
+            copy_rot(bend_name, intermediate_name, 0.7, scale_range=0.3)
+            copy_rot(bend_name, distal_name, 0.4, scale_range=0.3)
 
 
 def make_hand_rig(obj, suffix: str):
