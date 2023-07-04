@@ -31,7 +31,7 @@
 - `Guess Humanoid Bones` で空欄に名前ベースの簡単なマッチングによる割当を試行します
   - `Rigify` デフォルトの `Humanoid` Rig の割当がハードコーティングされています
   - `VRM-Addon-for-Blender` によって import された vrm0 の割り当てを読めます
-  - TODO: `VRM-Addon-for-Blender` によって import された vrm1
+  - `VRM-Addon-for-Blender` によって import された vrm1 の割り当てを読めます
 - `clear` Humanoid 割当をクリアします
 
 ### ポーズ(テキスト)のコピー

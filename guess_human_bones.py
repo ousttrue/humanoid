@@ -2,6 +2,7 @@ import bpy
 from .humanoid_properties import PROP_NAMES
 from typing import Optional
 
+
 VRM_MAP = {
     "hips": "hips",
     "spine": "spine",
@@ -122,17 +123,23 @@ RIGIFY_MAP = {
 def guess_bone(armature: bpy.types.Armature, prop: str) -> Optional[str]:
     if hasattr(armature, "vrm_addon_extension"):
         vrm = armature.vrm_addon_extension
-        if hasattr(vrm, "vrm0"):
+        if hasattr(vrm, "vrm1"):
+            vrm1 = vrm.vrm1
+            if hasattr(vrm1, "humanoid"):
+                human_bones = vrm1.humanoid.human_bones
+                if hasattr(human_bones, prop):
+                    return getattr(human_bones, prop).node.get_bone_name()
+        elif hasattr(vrm, "vrm0"):
             vrm0 = vrm.vrm0
             if hasattr(vrm0, "humanoid"):
                 humanoid = vrm0.humanoid
-                vrm_bone_name = VRM_MAP.get(prop)
+                vrm0_bone_name = VRM_MAP.get(prop)
                 for b in humanoid.human_bones:
                     name = b.node.get_bone_name()
                     # print(prop, name, b.bone)
-                    if b.bone == vrm_bone_name:
+                    if b.bone == vrm0_bone_name:
                         return name
-        raise f"{prop} not found"
+        raise Exception(f"{prop} not found")
 
     bone_name = RIGIFY_MAP.get(prop)
     if bone_name in armature.bones:
