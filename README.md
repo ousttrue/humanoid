@@ -1,46 +1,46 @@
-# blender Humanoid
+# VRM Humanoid for blender
 
-- Armature にカスタムプロパティ `bpy.types.Armature.humanoid` を追加
-- Armature の bone に HumanoidBone の割当をする
-- 割当に基づいて `VRMC_vrm_pose` をクリップボードにコピーする
+- Add custom property `bpy.types.Armature.humanoid` to Armature
+- Assign `HumanBone` to bone of Armature
+- Copy `VRMC_vrm_pose` to clipboard based on `HumanBone` assignment
 
-## Armature Humanoid を新規に作成する
+## Create a new Armature Humanoid
 
 `Add - Armature - Create Humanoid`
 
-### property
+### rig(bool): property
 
-- rig: true にするとポージング用の Rig を追加します。
-  - InvertedPelvis( hips が隠蔽されて下向きの pelvis に置き換わり、 その親に COG が追加されます)
+- Add a Rig if True
+  - InvertedPelvis(hips are hidden and replaced by downward facing pelvis and COG is added to its parent)
   - LegIk
   - ArmIk
-  - HandConroler
+  - HandController
     - finger bend(rot, scale)
     - finger spread(rot)
 
 ![humanoid_rig](./humanoid_rig.jpg)
 
-`boneWidget` で一部をカスタムシェイプ化。
+Custom shape part using `boneWidget`
 
 ## Humanoid Panel
 
-`VIEW_3D` - `UI(右側)`  - `Humanod(tab)`
+`VIEW_3D` - `UI(right side)`  - `Humanoid(tab)`
 
-### Humanoid Bone の Bone への割当
+### Assignment of HumanBone
 
-- `Guess Humanoid Bones` で空欄に名前ベースの簡単なマッチングによる割当を試行します
-  - `Rigify` デフォルトの `Humanoid` Rig の割当がハードコーティングされています
-  - `VRM-Addon-for-Blender` によって import された vrm0 の割り当てを読めます
-  - `VRM-Addon-for-Blender` によって import された vrm1 の割り当てを読めます
-- `clear` Humanoid 割当をクリアします
+- `Guess Humanoid Bones`: Attempts to assign HumanBone if blank
+  - HumanBone can be assigned to Rig derived from `Rigify`
+  - HumanBone can be assigned to vrm0 imported by `VRM-Addon-for-Blender`
+  - HumanBone can be assigned to vrm1 imported by `VRM-Addon-for-Blender`
+- `clear`: clear HumanBone assignment
 
-### ポーズ(テキスト)のコピー
+### Copy pose (text) to Clipboard
 
-前提として、 レストポーズが TPose であることが必要です。
+> As a prerequisite, rest pose must be TPose.
 
-- `Copy Pose To Humanoid` で `VRMC_vrm_pose` 形式のポーズをクリップボードにコピーします。
+- `Copy Pose To Humanoid`: Copy the pose in `VRMC_vrm_pose` format to the clipboard.
 
-## VRMC_vrm_pose (案)
+## VRMC_vrm_pose (Proposal)
 
 ```json5
 extensions: {
