@@ -8,20 +8,6 @@
 
 `Add - Armature - Create Humanoid`
 
-### rig(bool): property
-
-- Add a Rig if True
-  - InvertedPelvis(hips are hidden and replaced by downward facing pelvis and COG is added to its parent)
-  - LegIk
-  - ArmIk
-  - HandController
-    - finger bend(rot, scale)
-    - finger spread(rot)
-
-![humanoid_rig](./humanoid_rig.jpg)
-
-Custom shape part using `boneWidget`
-
 ## Humanoid Panel
 
 `VIEW_3D` - `UI(right side)`  - `Humanoid(tab)`
@@ -33,6 +19,19 @@ Custom shape part using `boneWidget`
   - HumanBone can be assigned to vrm0 imported by `VRM-Addon-for-Blender`
   - HumanBone can be assigned to vrm1 imported by `VRM-Addon-for-Blender`
 - `clear`: clear HumanBone assignment
+
+### Add Rig to Humanoid
+
+- InvertedPelvis(hips are hidden and replaced by downward facing pelvis and COG is added to its parent)
+- LegIk
+- ArmIk
+- HandController
+  - finger bend(rot, scale)
+  - finger spread(rot)
+
+![humanoid_rig](./humanoid_rig.jpg)
+
+Custom shape part using `boneWidget`
 
 ### Copy pose (text) to Clipboard
 
