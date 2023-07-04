@@ -1,8 +1,7 @@
-from typing import NamedTuple, Tuple, List, Optional, cast
+from typing import NamedTuple, Tuple, List
 import bpy
 import math
-from mathutils import Vector
-from .enter_pose_mode import enter_pose
+from .humanoid_utils import get_or_create_editbone
 
 ROLL_MAP = {
     "Shoulder.L": 90,
@@ -56,7 +55,7 @@ class Bone(NamedTuple):
         if parent and self.human_bone == "tip":
             name = parent.name + ".tip"
 
-        bone = get_or_create_bone(armature, name)
+        bone = get_or_create_editbone(armature, name)
         bone.head = self.head
         if parent:
             bone.parent = parent
@@ -72,20 +71,6 @@ class Bone(NamedTuple):
                 bone.tail = child_bone.head
                 child_bone.use_connect = True
         return bone
-
-
-def get_or_create_bone_group(
-    armature: bpy.types.Armature, name: str, theme: str
-) -> bpy.types.BoneGroup:
-    if name not in armature.pose.bone_groups:
-        group = armature.pose.bone_groups.new(name=name)
-        group.color_set = theme  # "THEME05"
-    return armature.pose.bone_groups[name]
-
-
-def set_bone_group(obj, bone_name: str, group_name: str, theme: str):
-    group = get_or_create_bone_group(obj, group_name, theme)
-    obj.pose.bones[bone_name].bone_group = group
 
 
 def get_finger(name: str, lr: float, y: float) -> Bone:
@@ -246,378 +231,7 @@ def activate(context, obj):
     obj.select_set(True)
 
 
-def get_or_create_bone(armature: bpy.types.Armature, name: str):
-    if name in armature.edit_bones:
-        return armature.edit_bones[name]
-    return armature.edit_bones.new(name)
-
-
-def make_inverted_pelvis(obj: bpy.types.Object):
-    mode = bpy.context.object.mode
-    if mode != "EDIT":
-        print(f"enter EDIT mode from {mode} mode")
-        bpy.ops.object.mode_set(mode="EDIT")
-
-    armature = cast(bpy.types.Armature, obj.data)
-
-    cog = armature.edit_bones.new("COG")
-    cog.parent = armature.edit_bones["Root"]
-    cog.head = armature.edit_bones["Spine"].head
-    cog.tail = (cog.head.x, cog.head.y + 0.4, cog.head.z)
-
-    pelvis = armature.edit_bones.new("Pelvis")
-    pelvis.parent = cog
-    pelvis.use_connect = False
-    pelvis.head = cog.head
-    pelvis.tail = armature.edit_bones["Hips"].head
-
-    armature.edit_bones["Hips"].parent = pelvis
-    with enter_pose(obj):
-        set_bone_group(obj, "Root", "Rig", "THEME05")
-        set_bone_group(obj, "COG", "Rig", "THEME05")
-        set_bone_group(obj, "Pelvis", "Rig", "THEME05")
-        set_bone_group(obj, "Spine", "Rig", "THEME05")
-        set_bone_group(obj, "Chest", "Rig", "THEME05")
-        set_bone_group(obj, "Neck", "Rig", "THEME05")
-        set_bone_group(obj, "Head", "Rig", "THEME05")
-        set_bone_group(obj, "Toes.L", "Rig", "THEME05")
-        set_bone_group(obj, "Toes.R", "Rig", "THEME05")
-
-        hips = obj.pose.bones["Hips"]
-        hips.lock_rotation = (True, True, True)
-        hips.lock_scale = (True, True, True)
-        armature.bones["Hips"].hide = True
-
-    armature.bones["Spine"].use_inherit_rotation = False
-
-
-def make_leg_ik(obj: bpy.types.Object, suffix: str):
-    mode = bpy.context.object.mode
-    if mode != "EDIT":
-        print(f"enter EDIT mode from {mode} mode")
-        bpy.ops.object.mode_set(mode="EDIT")
-
-    armature = cast(bpy.types.Armature, obj.data)
-
-    foot_name = f"Foot{suffix}"
-    foot_offset_name = f"FootOffset{suffix}"
-    ik_name = f"LegIK{suffix}"
-    lower_name = f"LowerLeg{suffix}"
-    pole_name = f"LegPole{suffix}"
-
-    ik_head = armature.edit_bones[foot_name].head
-    ik = armature.edit_bones.new(ik_name)
-    ik.parent = armature.edit_bones["Root"]
-    ik.use_connect = False
-    ik.head = ik_head
-    ik.tail = (ik_head.x, ik_head.y + 0.2, ik_head.z)
-
-    pole_head = armature.edit_bones[lower_name].head
-    pole = armature.edit_bones.new(pole_name)
-    pole.parent = ik
-    pole.use_connect = False
-    pole.head = (pole_head.x, pole_head.y - 0.4, pole_head.z)
-    pole.tail = (pole_head.x, pole_head.y - 0.6, pole_head.z)
-
-    lower = armature.edit_bones[lower_name]
-    lower.head = (lower.head.x, lower.head.y - 0.01, lower.head.z)
-
-    foot_offset = armature.edit_bones.new(foot_offset_name)
-    foot_offset.parent = ik
-    foot_offset.use_connect = False
-    foot_offset.head = armature.edit_bones[foot_name].head
-    foot_offset.tail = armature.edit_bones[foot_name].tail
-
-    with enter_pose(obj):
-        # IK
-        armature.bones.active = armature.bones[lower_name]
-        bpy.ops.pose.constraint_add(type="IK")
-        c = obj.pose.bones[lower_name].constraints["IK"]
-        c.target = obj
-        c.subtarget = ik_name
-        c.pole_target = obj
-        c.pole_subtarget = pole_name
-        c.pole_angle = math.pi * (-90) / 180
-        c.chain_count = 2
-        set_bone_group(obj, ik_name, "Rig", "THEME05")
-        set_bone_group(obj, pole_name, "Rig", "THEME05")
-
-        # FootCopy
-        armature.bones.active = armature.bones[foot_name]
-        bpy.ops.pose.constraint_add(type="COPY_ROTATION")
-        c = obj.pose.bones[foot_name].constraints["Copy Rotation"]
-        c.target = obj
-        c.subtarget = foot_offset_name
-
-
-def make_arm_ik(obj: bpy.types.Object, suffix: str):
-    mode = bpy.context.object.mode
-    if mode != "EDIT":
-        print(f"enter EDIT mode from {mode} mode")
-        bpy.ops.object.mode_set(mode="EDIT")
-
-    armature = cast(bpy.types.Armature, obj.data)
-
-    hand_name = f"Hand{suffix}"
-    ik_name = f"ArmIK{suffix}"
-    lower_name = f"LowerArm{suffix}"
-    pole_name = f"ArmPole{suffix}"
-
-    hand = armature.edit_bones[hand_name]
-    ik = armature.edit_bones.new(ik_name)
-    ik.parent = armature.edit_bones["COG"]
-    ik.use_connect = False
-    ik.head = hand.head
-    ik.tail = hand.tail
-
-    pole_head = armature.edit_bones[lower_name].head
-    pole = armature.edit_bones.new(pole_name)
-    pole.parent = armature.edit_bones["COG"]
-    pole.use_connect = False
-    pole.head = (pole_head.x, pole_head.y + 0.4, pole_head.z)
-    pole.tail = (pole_head.x, pole_head.y + 0.6, pole_head.z)
-
-    lower = armature.edit_bones[lower_name]
-    lower.head = (lower.head.x, lower.head.y + 0.01, lower.head.z)
-
-    with enter_pose(obj):
-        # IK
-        armature.bones.active = armature.bones[lower_name]
-        bpy.ops.pose.constraint_add(type="IK")
-        c = obj.pose.bones[lower_name].constraints["IK"]
-        c.target = obj
-        c.subtarget = ik_name
-        c.pole_target = obj
-        c.pole_subtarget = pole_name
-        c.pole_angle = math.pi * (-90) / 180
-        c.chain_count = 2
-        set_bone_group(obj, ik_name, "Rig", "THEME05")
-        set_bone_group(obj, pole_name, "Rig", "THEME05")
-
-        # HandCopy
-        armature.bones.active = armature.bones[hand_name]
-        bpy.ops.pose.constraint_add(type="COPY_ROTATION")
-        c = obj.pose.bones[hand_name].constraints["Copy Rotation"]
-        c.target = obj
-        c.subtarget = ik_name
-
-
-def is_limb(bone: str) -> bool:
-    if bone.startswith("LowerArm"):
-        return True
-    if bone.startswith("LowerLeg"):
-        return True
-    if "Metacarpal" in bone:
-        return True
-    if "Proximal" in bone:
-        return True
-    if "Intermediate" in bone:
-        return True
-    if "Distal" in bone:
-        return True
-    return False
-
-
-def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
-    mode = bpy.context.object.mode
-    if mode != "EDIT":
-        print(f"enter EDIT mode from {mode} mode")
-        bpy.ops.object.mode_set(mode="EDIT")
-
-    armature = cast(bpy.types.Armature, obj.data)
-
-    hand_name = f"Hand{suffix}"
-    if finger_name == "Thumb":
-        proximal_name = f"{finger_name}Metacarpal{suffix}"
-        intermediate_name = f"{finger_name}Proximal{suffix}"
-    else:
-        proximal_name = f"{finger_name}Proximal{suffix}"
-        intermediate_name = f"{finger_name}Intermediate{suffix}"
-    distal_name = f"{finger_name}Distal{suffix}"
-    bend_name = f"Bend{finger_name}{suffix}"
-
-    hand = armature.edit_bones[hand_name]
-    proximal = armature.edit_bones[proximal_name]
-    distal = armature.edit_bones[distal_name]
-
-    bend = armature.edit_bones.new(bend_name)
-    bend.parent = hand
-    bend.use_connect = False
-    delta = 0.01 if proximal.head.x > 0 else -0.01
-    bend.head = proximal.head
-    bend.tail = distal.tail
-    bend.roll = proximal.roll
-    if finger_name == "Thumb":
-        bend.head.y -= 0.02
-        bend.tail.y -= 0.02
-    else:
-        bend.head.z += 0.02
-        bend.tail.z += 0.02
-
-    def copy_rot(
-        src_name: str,
-        dst_name: str,
-        scale_min: Optional[float] = None,
-        *,
-        scale_range: float = 0.3,
-    ):
-        armature.bones.active = armature.bones[dst_name]
-        bpy.ops.pose.constraint_add(type="COPY_ROTATION")
-        pose_bone = obj.pose.bones[dst_name]
-        c = pose_bone.constraints["Copy Rotation"]
-        c.target = obj
-        c.subtarget = src_name
-        c.target_space = "LOCAL"
-        c.owner_space = "LOCAL"
-        set_bone_group(obj, src_name, "Rig", "THEME05")
-
-        if scale_min:
-            # for Intermediate & Distal
-            c.use_y = False
-            c.use_z = False
-            # scale influence
-            factor = 1 / scale_range
-            scale_max = scale_min + scale_range
-            driver = c.driver_add("influence")
-            driver.driver.type = "SCRIPTED"
-            var = driver.driver.variables.new()
-            var.name = "var"
-            var.type = "SINGLE_PROP"
-            var.targets[0].id = obj
-            var.targets[0].data_path = f'pose.bones["{src_name}"].scale[1]'
-            driver.driver.expression = (
-                f"({scale_max} - min(max(var, {scale_min}), {scale_max})) * {factor}"
-            )
-
-    def copy_rot_3(
-        src_name: str,
-        dst_name: str,
-        scale_min: Optional[float] = None,
-        *,
-        scale_range: float = 0.3,
-    ):
-        armature.bones.active = armature.bones[dst_name]
-        bpy.ops.pose.constraint_add(type="TRANSFORM")
-        pose_bone = obj.pose.bones[dst_name]
-        c = pose_bone.constraints["Transformation"]
-        c.target = obj
-        c.subtarget = src_name
-        c.target_space = "LOCAL"
-        c.owner_space = "LOCAL"
-
-        c.map_from = "ROTATION"
-        c.from_min_x_rot = -1
-        c.from_max_x_rot = 1
-
-        c.map_to = "ROTATION"
-        c.to_min_x_rot = -3
-        c.to_max_x_rot = 3
-        c.mix_mode_rot = "BEFORE"
-
-        set_bone_group(obj, src_name, "Rig", "THEME05")
-
-        if scale_min:
-            # scale influence
-            factor = 1 / scale_range
-            scale_max = scale_min + scale_range
-            driver = c.driver_add("influence")
-            driver.driver.type = "SCRIPTED"
-            var = driver.driver.variables.new()
-            var.name = "var"
-            var.type = "SINGLE_PROP"
-            var.targets[0].id = obj
-            var.targets[0].data_path = f'pose.bones["{src_name}"].scale[1]'
-            driver.driver.expression = (
-                f"({scale_max} - min(max(var, {scale_min}), {scale_max})) * {factor}"
-            )
-
-    with enter_pose(obj):
-        bend_pose = obj.pose.bones[bend_name]
-        bend_pose.rotation_mode = "ZYX"
-        bend_pose.lock_location[0] = True
-        bend_pose.lock_location[1] = True
-        bend_pose.lock_location[2] = True
-        if finger_name == "Thumb":
-            bend_pose.lock_rotation[1] = True
-        else:
-            bend_pose.lock_rotation[1] = True
-            bend_pose.lock_rotation[2] = True
-        bend_pose.lock_scale[0] = True
-        bend_pose.lock_scale[2] = True
-
-        copy_rot(bend_name, proximal_name)
-        if finger_name == "Thumb":
-            copy_rot_3(bend_name, intermediate_name, 0.7, scale_range=0.3)
-            copy_rot_3(bend_name, distal_name, 0.4, scale_range=0.3)
-        else:
-            copy_rot(bend_name, intermediate_name, 0.7, scale_range=0.3)
-            copy_rot(bend_name, distal_name, 0.4, scale_range=0.3)
-
-
-def make_hand_rig(obj, suffix: str):
-    make_finger_bend(obj, "Index", suffix)
-    make_finger_bend(obj, "Middle", suffix)
-    make_finger_bend(obj, "Ring", suffix)
-    make_finger_bend(obj, "Little", suffix)
-    make_finger_bend(obj, "Thumb", suffix)
-
-    mode = bpy.context.object.mode
-    if mode != "EDIT":
-        print(f"enter EDIT mode from {mode} mode")
-        bpy.ops.object.mode_set(mode="EDIT")
-    armature = cast(bpy.types.Armature, obj.data)
-
-    hand_name = f"Hand{suffix}"
-    spread_name = f"Spread{suffix}"
-    little_proximal_name = f"LittleProximal{suffix}"
-    little_distal_name = f"LittleDistal{suffix}"
-
-    hand = armature.edit_bones[hand_name]
-    ring_proximal = armature.edit_bones[little_proximal_name]
-    ring_distal = armature.edit_bones[little_distal_name]
-    spread = armature.edit_bones.new(spread_name)
-    spread.parent = hand
-    spread.use_connect = False
-    spread.head = ring_proximal.head
-    spread.head.y += 0.02
-    spread.head.z += 0.02
-    spread.tail = ring_distal.tail
-    spread.tail.y += 0.02
-    spread.tail.z += 0.02
-    spread.roll = ring_proximal.roll
-
-    def copy_rot2bend(src_name: str, dst_name: str, influence: float):
-        armature.bones.active = armature.bones[dst_name]
-        bpy.ops.pose.constraint_add(type="TRANSFORM")
-        pose_bone = obj.pose.bones[dst_name]
-        c = pose_bone.constraints["Transformation"]
-        c.target = obj
-        c.subtarget = src_name
-        c.target_space = "LOCAL"
-        c.owner_space = "LOCAL"
-
-        c.map_from = "ROTATION"
-        c.from_min_z_rot = -1.5  # about pi/2
-        c.from_max_z_rot = 1.5
-
-        c.map_to = "ROTATION"
-        c.to_min_z_rot = -1.5 * influence
-        c.to_max_z_rot = 1.5 * influence
-        c.mix_mode_rot = "BEFORE"
-
-        set_bone_group(obj, src_name, "Rig", "THEME05")
-
-    with enter_pose(obj):
-        spread_pose = obj.pose.bones[spread_name]
-        spread_pose.rotation_mode = "ZYX"
-        spread_pose.lock_rotation = [True, True, False]
-        copy_rot2bend(spread_name, f"BendIndex{suffix}", -0.65)
-        # copy_rot2bend(spread_name, f'BendMiddle{suffix}')
-        copy_rot2bend(spread_name, f"BendRing{suffix}", 0.65)
-        copy_rot2bend(spread_name, f"BendLittle{suffix}", 1)
-
-
-def create(context, rig: bool):
+def create(context):
     armature: bpy.types.Armature = bpy.data.armatures.new("Humanoid")
     obj = bpy.data.objects.new("Humanoid", armature)
     context.scene.collection.objects.link(obj)
@@ -638,7 +252,7 @@ def create(context, rig: bool):
     humanoid = get_humanoid(1.6)
 
     # root
-    root = get_or_create_bone(armature, "Root")
+    root = get_or_create_editbone(armature, "Root")
     root.tail = (0, 1, 0)
     humanoid.create(armature, root)
 
@@ -712,24 +326,6 @@ def create(context, rig: bool):
     armature.humanoid.right_little_intermediate = "LittleIntermediate.R"
     armature.humanoid.right_little_distal = "LittleDistal.R"
 
-    if rig:
-        # setup rig
-        with enter_pose(obj):
-            for b in obj.pose.bones:
-                b.rotation_mode = "ZYX"
-                b.lock_scale = [True, True, True]
-                if is_limb(b.name):
-                    b.lock_rotation[1] = True
-                    b.lock_rotation[2] = True
-
-        make_inverted_pelvis(obj)
-        make_leg_ik(obj, ".L")
-        make_leg_ik(obj, ".R")
-        make_arm_ik(obj, ".L")
-        make_arm_ik(obj, ".R")
-        make_hand_rig(obj, ".L")
-        make_hand_rig(obj, ".R")
-
     # to object mode
     mode = context.object.mode
     if mode != "OBJECT":
@@ -741,17 +337,15 @@ class CreateHumanoid(bpy.types.Operator):
     """CreateHumanoidArmature"""
 
     bl_idname = "humanoid.create"
-    bl_label = "Create Humanoid"
+    bl_label = "Humanoid(VRM-1.0)"
     bl_options = {"REGISTER", "UNDO"}
     bl_icon = "OUTLINER_OB_ARMATURE"
     bl_menu = "VIEW3D_MT_armature_add"
-
-    rig: bpy.props.BoolProperty()
 
     @classmethod
     def poll(cls, context):
         return context.mode == "OBJECT"
 
     def execute(self, context):
-        create(context, self.rig)
+        create(context)
         return {"FINISHED"}

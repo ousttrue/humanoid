@@ -1,44 +1,52 @@
 bl_info = {
-    "name": "Humanoid",
+    "name": "VrmHumanoid",
     "blender": (3, 5, 0),
     "category": "Rigging",
-    "description": "Create default armarture and copy pose to clipboard as VRMC_vrm_pose",
+    "description": "Create vrm compliant humanoid armarture and copy humanoid pose to clipboard as VRMC_vrm_pose",
     "author": "ousttrue",
-    "version": (2, 2, 0),
+    "version": (3, 0, 0),
     "wiki_url": "https://github.com/ousttrue/humanoid",
 }
 
 import bpy
 import importlib
 
+if "humanoid_utils" in locals():
+    importlib.reload(humanoid_utils)
+
 if "humanoid_properties" in locals():
-    print("reload")
     importlib.reload(humanoid_properties)
 
 if "create_humanoid" in locals():
-    print("reload")
     importlib.reload(create_humanoid)
 
+if "add_humanoid_rig" in locals():
+    importlib.reload(add_humanoid_rig)
+
 if "copy_humanoid_pose" in locals():
-    print("reload")
     importlib.reload(copy_humanoid_pose)
 
 if "guess_human_bones" in locals():
-    print("reload")
     importlib.reload(guess_human_bones)
 
 if "humanoid_panel" in locals():
-    print("reload")
     importlib.reload(humanoid_panel)
 
+from . import humanoid_utils
 from .humanoid_properties import HumanoidProperties
 from .create_humanoid import CreateHumanoid
+from .add_humanoid_rig import AddHumanoidRig
 from .copy_humanoid_pose import CopyHumanoidPose
 from .guess_human_bones import GuessHumanBones
 from .humanoid_panel import ArmatureHumanoidPanel, SelectPoseBone
 
-
-OPERATORS = [CreateHumanoid, CopyHumanoidPose, GuessHumanBones, SelectPoseBone]
+OPERATORS = [
+    CreateHumanoid,
+    AddHumanoidRig,
+    CopyHumanoidPose,
+    GuessHumanBones,
+    SelectPoseBone,
+]
 CLASSES = [HumanoidProperties, ArmatureHumanoidPanel] + OPERATORS
 
 

@@ -1,10 +1,8 @@
-from typing import Optional, Tuple, Iterable, cast
-import math
+from typing import Optional
 import bpy
-import mathutils  # type: ignore
 import json
 from . import humanoid_properties
-from .enter_pose_mode import enter_pose
+from .humanoid_utils import enter_pose
 
 VRM_ANIMATION = "VRMC_vrm_animation"
 VRM_POSE = "VRMC_vrm_pose"

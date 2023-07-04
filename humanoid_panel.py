@@ -1,6 +1,7 @@
 import bpy
 from .copy_humanoid_pose import CopyHumanoidPose
 from .guess_human_bones import GuessHumanBones
+from .add_humanoid_rig import AddHumanoidRig
 
 
 class SelectPoseBone(bpy.types.Operator):
@@ -64,11 +65,18 @@ class ArmatureHumanoidPanel(bpy.types.Panel):
         self.draw_bone_lr(armature, "lower_leg")
         self.draw_bone_lr(armature, "foot")
         self.draw_bone_lr(armature, "toes")
+
+        # guess
         btn = self.layout.operator(GuessHumanBones.bl_idname)
         btn.clear = False
+        # clear
         btn = self.layout.operator(GuessHumanBones.bl_idname, text="clear")
         btn.clear = True
+        # add rig
+        self.layout.operator(AddHumanoidRig.bl_idname)
+        # copy pose
         self.layout.operator(CopyHumanoidPose.bl_idname)
+
         self.draw_bone_lr(armature, "thumb_metacarpal")
         self.draw_bone_lr(armature, "thumb_proximal")
         self.draw_bone_lr(armature, "thumb_distal")
