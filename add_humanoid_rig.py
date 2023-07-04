@@ -5,6 +5,9 @@ from .humanoid_utils import (
     get_or_create_editbone,
     set_bone_group,
     get_or_create_constraint,
+    get_human_bone,
+    get_human_editbone,
+    get_human_posebone,
 )
 import math
 
@@ -17,35 +20,43 @@ def make_inverted_pelvis(obj: bpy.types.Object):
 
     armature = cast(bpy.types.Armature, obj.data)
 
+    root = get_or_create_editbone(armature, "Root")
+    root.parent = None
+    root.use_connect = False
+    root.head = (0, 0, 0)
+    root.tail = (0, 1, 0)
+
     cog = get_or_create_editbone(armature, "COG")
-    cog.parent = armature.edit_bones["Root"]
-    cog.head = armature.edit_bones["Spine"].head
+    cog.parent = root
+    cog.head = get_human_editbone(armature, "spine").head
     cog.tail = (cog.head.x, cog.head.y + 0.4, cog.head.z)
 
     pelvis = get_or_create_editbone(armature, "Pelvis")
     pelvis.parent = cog
     pelvis.use_connect = False
     pelvis.head = cog.head
-    pelvis.tail = armature.edit_bones["Hips"].head
 
-    armature.edit_bones["Hips"].parent = pelvis
+    hips = get_human_editbone(armature, "hips")
+    pelvis.tail = hips.head
+
+    hips.parent = pelvis
     with enter_pose(obj):
         set_bone_group(obj, "Root", "Rig", "THEME05")
         set_bone_group(obj, "COG", "Rig", "THEME05")
         set_bone_group(obj, "Pelvis", "Rig", "THEME05")
-        set_bone_group(obj, "Spine", "Rig", "THEME05")
-        set_bone_group(obj, "Chest", "Rig", "THEME05")
-        set_bone_group(obj, "Neck", "Rig", "THEME05")
-        set_bone_group(obj, "Head", "Rig", "THEME05")
-        set_bone_group(obj, "Toes.L", "Rig", "THEME05")
-        set_bone_group(obj, "Toes.R", "Rig", "THEME05")
+        set_bone_group(obj, "spine", "Rig", "THEME05")
+        set_bone_group(obj, "chest", "Rig", "THEME05")
+        set_bone_group(obj, "neck", "Rig", "THEME05")
+        set_bone_group(obj, "head", "Rig", "THEME05")
+        set_bone_group(obj, "left_toes", "Rig", "THEME05")
+        set_bone_group(obj, "right_toes", "Rig", "THEME05")
 
-        hips = obj.pose.bones["Hips"]
+        hips = get_human_posebone(obj, "hips")
         hips.lock_rotation = (True, True, True)
         hips.lock_scale = (True, True, True)
-        armature.bones["Hips"].hide = True
+        get_human_bone(armature, "hips").hide = True
 
-    armature.bones["Spine"].use_inherit_rotation = False
+    get_human_bone(armature, "spine").use_inherit_rotation = False
 
 
 def make_leg_ik(obj: bpy.types.Object, suffix: str):
@@ -56,29 +67,35 @@ def make_leg_ik(obj: bpy.types.Object, suffix: str):
 
     armature = cast(bpy.types.Armature, obj.data)
 
-    foot_name = f"Foot{suffix}"
+    prefix = ""
+    if suffix == ".L":
+        prefix = "left_"
+    elif suffix == ".R":
+        prefix = "right_"
+
+    foot_name = f"{prefix}foot"
     foot_offset_name = f"FootOffset{suffix}"
     ik_name = f"LegIK{suffix}"
-    upper_name = f"UpperLeg{suffix}"
-    lower_name = f"LowerLeg{suffix}"
+    upper_name = f"{prefix}upper_leg"
+    lower_name = f"{prefix}lower_leg"
     pole_name = f"LegPole{suffix}"
 
-    ik_head = armature.edit_bones[foot_name].head
+    ik_head = get_human_editbone(armature, foot_name).head
     ik = get_or_create_editbone(armature, ik_name)
     ik.parent = armature.edit_bones["Root"]
     ik.use_connect = False
     ik.head = ik_head
     ik.tail = (ik_head.x, ik_head.y + 0.2, ik_head.z)
 
-    pole_head = armature.edit_bones[lower_name].head
+    pole_head = get_human_editbone(armature, lower_name).head
     pole = get_or_create_editbone(armature, pole_name)
     pole.parent = ik
     pole.use_connect = False
     pole.head = (pole_head.x, pole_head.y - 0.4, pole_head.z)
     pole.tail = (pole_head.x, pole_head.y - 0.6, pole_head.z)
 
-    upper = armature.edit_bones[upper_name]
-    lower = armature.edit_bones[lower_name]
+    upper = get_human_editbone(armature, upper_name)
+    lower = get_human_editbone(armature, lower_name)
     if upper.vector == lower.vector:
         # ちょっと曲げる
         lower.head.y -= 0.01
@@ -86,8 +103,8 @@ def make_leg_ik(obj: bpy.types.Object, suffix: str):
     foot_offset = get_or_create_editbone(armature, foot_offset_name)
     foot_offset.parent = ik
     foot_offset.use_connect = False
-    foot_offset.head = armature.edit_bones[foot_name].head
-    foot_offset.tail = armature.edit_bones[foot_name].tail
+    foot_offset.head = get_human_editbone(armature, foot_name).head
+    foot_offset.tail = get_human_editbone(armature, foot_name).tail
 
     with enter_pose(obj):
         # IK
@@ -115,28 +132,34 @@ def make_arm_ik(obj: bpy.types.Object, suffix: str):
 
     armature = cast(bpy.types.Armature, obj.data)
 
-    hand_name = f"Hand{suffix}"
+    prefix = ""
+    if suffix == ".L":
+        prefix = "left_"
+    elif suffix == ".R":
+        prefix = "right_"
+
+    hand_name = f"{prefix}hand"
     ik_name = f"ArmIK{suffix}"
-    upper_name = f"UpperArm{suffix}"
-    lower_name = f"LowerArm{suffix}"
+    upper_name = f"{prefix}upper_arm"
+    lower_name = f"{prefix}lower_arm"
     pole_name = f"ArmPole{suffix}"
 
-    hand = armature.edit_bones[hand_name]
+    hand = get_human_editbone(armature, hand_name)
     ik = get_or_create_editbone(armature, ik_name)
     ik.parent = armature.edit_bones["COG"]
     ik.use_connect = False
     ik.head = hand.head
     ik.tail = hand.tail
 
-    pole_head = armature.edit_bones[lower_name].head
+    pole_head = get_human_editbone(armature, lower_name).head
     pole = get_or_create_editbone(armature, pole_name)
     pole.parent = armature.edit_bones["COG"]
     pole.use_connect = False
     pole.head = (pole_head.x, pole_head.y + 0.4, pole_head.z)
     pole.tail = (pole_head.x, pole_head.y + 0.6, pole_head.z)
 
-    upper = armature.edit_bones[upper_name]
-    lower = armature.edit_bones[lower_name]
+    upper = get_human_editbone(armature, upper_name)
+    lower = get_human_editbone(armature, lower_name)
     if upper.vector == lower.vector:
         # ちょっと曲げる
         lower.head.y += 0.01
@@ -183,19 +206,25 @@ def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
 
     armature = cast(bpy.types.Armature, obj.data)
 
-    hand_name = f"Hand{suffix}"
+    prefix = ""
+    if suffix == ".L":
+        prefix = "left_"
+    elif suffix == ".R":
+        prefix = "right_"
+
+    hand_name = f"{prefix}hand"
     if finger_name == "Thumb":
-        proximal_name = f"{finger_name}Metacarpal{suffix}"
-        intermediate_name = f"{finger_name}Proximal{suffix}"
+        proximal_name = f"{prefix}{finger_name.lower()}_metacarpal"
+        intermediate_name = f"{prefix}{finger_name.lower()}_proximal"
     else:
-        proximal_name = f"{finger_name}Proximal{suffix}"
-        intermediate_name = f"{finger_name}Intermediate{suffix}"
-    distal_name = f"{finger_name}Distal{suffix}"
+        proximal_name = f"{prefix}{finger_name.lower()}_proximal"
+        intermediate_name = f"{prefix}{finger_name.lower()}_intermediate"
+    distal_name = f"{prefix}{finger_name.lower()}_distal"
     bend_name = f"Bend{finger_name}{suffix}"
 
-    hand = armature.edit_bones[hand_name]
-    proximal = armature.edit_bones[proximal_name]
-    distal = armature.edit_bones[distal_name]
+    hand = get_human_editbone(armature, hand_name)
+    proximal = get_human_editbone(armature, proximal_name)
+    distal = get_human_editbone(armature, distal_name)
 
     bend = get_or_create_editbone(armature, bend_name)
     bend.parent = hand
@@ -318,14 +347,20 @@ def make_hand_rig(obj, suffix: str):
         bpy.ops.object.mode_set(mode="EDIT")
     armature = cast(bpy.types.Armature, obj.data)
 
-    hand_name = f"Hand{suffix}"
-    spread_name = f"Spread{suffix}"
-    little_proximal_name = f"LittleProximal{suffix}"
-    little_distal_name = f"LittleDistal{suffix}"
+    prefix = ""
+    if suffix == ".L":
+        prefix = "left_"
+    elif suffix == ".R":
+        prefix = "right_"
 
-    hand = armature.edit_bones[hand_name]
-    ring_proximal = armature.edit_bones[little_proximal_name]
-    ring_distal = armature.edit_bones[little_distal_name]
+    hand_name = f"{prefix}hand"
+    spread_name = f"Spread{suffix}"
+    little_proximal_name = f"{prefix}little_proximal"
+    little_distal_name = f"{prefix}little_distal"
+
+    hand = get_human_editbone(armature, hand_name)
+    ring_proximal = get_human_editbone(armature, little_proximal_name)
+    ring_distal = get_human_editbone(armature, little_distal_name)
     spread = get_or_create_editbone(armature, spread_name)
     spread.parent = hand
     spread.use_connect = False

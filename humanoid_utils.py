@@ -1,6 +1,36 @@
 import contextlib
 import struct
 import bpy
+from typing import Optional
+
+
+def prop_to_name(armature: bpy.types.Armature, prop) -> Optional[str]:
+    if hasattr(armature.humanoid, prop):
+        return getattr(armature.humanoid, prop)
+
+
+def get_human_bone(armature: bpy.types.Armature, prop):
+    name = prop_to_name(armature, prop)
+    if name:
+        return armature.bones[name]
+    else:
+        return armature.bones[prop]
+
+
+def get_human_editbone(armature: bpy.types.Armature, prop):
+    name = prop_to_name(armature, prop)
+    if name:
+        return armature.edit_bones[name]
+    else:
+        return armature.edit_bones[prop]
+
+
+def get_human_posebone(obj: bpy.types.Object, prop):
+    name = prop_to_name(obj.data, prop)
+    if name:
+        return obj.pose.bones[name]
+    else:
+        return obj.pose.bones[prop]
 
 
 def get_or_create_editbone(armature: bpy.types.Armature, name: str):
@@ -32,9 +62,10 @@ def get_or_create_bone_group(
     return armature_obj.pose.bone_groups[name]
 
 
-def set_bone_group(obj: bpy.types.Object, bone_name: str, group_name: str, theme: str):
+def set_bone_group(obj: bpy.types.Object, prop: str, group_name: str, theme: str):
     group = get_or_create_bone_group(obj, group_name, theme)
-    obj.pose.bones[bone_name].bone_group = group
+    pose_bone = get_human_posebone(obj, prop)
+    pose_bone.bone_group = group
 
 
 def get_or_create_constraint(
@@ -42,8 +73,10 @@ def get_or_create_constraint(
 ):
     if not constraint_name:
         constraint_name = constraint_type
-    if constraint_name in armature_obj.pose.bones[pose_bone_name].constraints:
-        return armature_obj.pose.bones[pose_bone_name].constraints[constraint_name]
-    armature_obj.data.bones.active = armature_obj.data.bones[pose_bone_name]
+    if constraint_name in get_human_posebone(armature_obj, pose_bone_name).constraints:
+        return get_human_posebone(armature_obj, pose_bone_name).constraints[
+            constraint_name
+        ]
+    armature_obj.data.bones.active = get_human_bone(armature_obj.data, pose_bone_name)
     bpy.ops.pose.constraint_add(type=constraint_type)
-    return armature_obj.pose.bones[pose_bone_name].constraints[constraint_name]
+    return get_human_posebone(armature_obj, pose_bone_name).constraints[constraint_name]
