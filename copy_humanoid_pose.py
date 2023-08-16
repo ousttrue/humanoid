@@ -5,7 +5,7 @@ from . import humanoid_properties
 from .humanoid_utils import enter_pose
 
 VRM_ANIMATION = "VRMC_vrm_animation"
-VRM_POSE = "VRMC_vrm_pose"
+VRM_POSE = "UNIVRM_pose"
 
 
 class Builder:
@@ -31,7 +31,7 @@ class Builder:
                         "humanBones": {},
                     },
                     "specVersion": "1.0",
-                    "extensions": {
+                    "extras": {
                         VRM_POSE: {
                             "humanoid": {
                                 "translation": [0, 0, 0],
@@ -117,7 +117,7 @@ class Builder:
             pass
         t, r, s = m.decompose()
 
-        vrm_pose = self.gltf["extensions"][VRM_ANIMATION]["extensions"][VRM_POSE][
+        vrm_pose = self.gltf["extensions"][VRM_ANIMATION]["extras"][VRM_POSE][
             "humanoid"
         ]
         vrm_pose["rotations"][human_bone] = [r.x, r.y, r.z, r.w]

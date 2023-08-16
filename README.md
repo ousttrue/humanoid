@@ -2,7 +2,7 @@
 
 - Add custom property `bpy.types.Armature.humanoid` to Armature
 - Assign `HumanBone` to bone of Armature
-- Copy `VRMC_vrm_pose` to clipboard based on `HumanBone` assignment
+- Copy `UNIVRM_pose` to clipboard based on `HumanBone` assignment
 
 ## Create a new Armature Humanoid
 
@@ -37,9 +37,9 @@ Custom shape part using `boneWidget`
 
 > As a prerequisite, rest pose must be TPose.
 
-- `Copy Pose To Humanoid`: Copy the pose in `VRMC_vrm_pose` format to the clipboard.
+- `Copy Pose To Humanoid`: Copy the pose in `UNIVRM_pose` format to the clipboard.
 
-## VRMC_vrm_pose (Proposal)
+## VRMC_vrm_animation.extras.UNIVRM_pose
 
 ```json5
 extensions: {
@@ -47,8 +47,8 @@ extensions: {
     humanoid : {
       humanBones: {}
     },
-    extensions: {
-      VMRC_vrm_pose: {
+    extras: {
+      UNIVRM_pose: {
         humanoid: {
           translation: [
             0,

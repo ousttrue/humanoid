@@ -2,7 +2,7 @@ bl_info = {
     "name": "VrmHumanoid",
     "blender": (3, 5, 0),
     "category": "Rigging",
-    "description": "Create vrm compliant humanoid armarture and copy humanoid pose to clipboard as VRMC_vrm_pose",
+    "description": "Create vrm compliant humanoid armarture and copy humanoid pose to clipboard as UNIVRM_pose",
     "author": "ousttrue",
     "version": (3, 0, 0),
     "wiki_url": "https://github.com/ousttrue/humanoid",
