@@ -3,7 +3,7 @@ import bpy
 from .humanoid_utils import (
     enter_pose,
     get_or_create_editbone,
-    set_bone_group,
+    set_bone_collection,
     get_or_create_constraint,
     get_human_bone,
     get_human_editbone,
@@ -41,15 +41,15 @@ def make_inverted_pelvis(obj: bpy.types.Object):
 
     hips.parent = pelvis
     with enter_pose(obj):
-        set_bone_group(obj, "Root", "Rig", "THEME05")
-        set_bone_group(obj, "COG", "Rig", "THEME05")
-        set_bone_group(obj, "Pelvis", "Rig", "THEME05")
-        set_bone_group(obj, "spine", "Rig", "THEME05")
-        set_bone_group(obj, "chest", "Rig", "THEME05")
-        set_bone_group(obj, "neck", "Rig", "THEME05")
-        set_bone_group(obj, "head", "Rig", "THEME05")
-        set_bone_group(obj, "left_toes", "Rig", "THEME05")
-        set_bone_group(obj, "right_toes", "Rig", "THEME05")
+        set_bone_collection(obj, "Root", "Rig")
+        set_bone_collection(obj, "COG", "Rig")
+        set_bone_collection(obj, "Pelvis", "Rig")
+        set_bone_collection(obj, "spine", "Rig")
+        set_bone_collection(obj, "chest", "Rig")
+        set_bone_collection(obj, "neck", "Rig")
+        set_bone_collection(obj, "head", "Rig")
+        set_bone_collection(obj, "left_toes", "Rig")
+        set_bone_collection(obj, "right_toes", "Rig")
 
         hips = get_human_posebone(obj, "hips")
         hips.lock_rotation = (True, True, True)
@@ -115,8 +115,8 @@ def make_leg_ik(obj: bpy.types.Object, suffix: str):
         c.pole_subtarget = pole_name
         c.pole_angle = math.pi * (-90) / 180
         c.chain_count = 2
-        set_bone_group(obj, ik_name, "Rig", "THEME05")
-        set_bone_group(obj, pole_name, "Rig", "THEME05")
+        set_bone_collection(obj, ik_name, "Rig")
+        set_bone_collection(obj, pole_name, "Rig")
 
         # FootCopy
         c = get_or_create_constraint(obj, foot_name, "COPY_ROTATION", "Copy Rotation")
@@ -173,8 +173,8 @@ def make_arm_ik(obj: bpy.types.Object, suffix: str):
         c.pole_subtarget = pole_name
         c.pole_angle = math.pi * (-90) / 180
         c.chain_count = 2
-        set_bone_group(obj, ik_name, "Rig", "THEME05")
-        set_bone_group(obj, pole_name, "Rig", "THEME05")
+        set_bone_collection(obj, ik_name, "Rig")
+        set_bone_collection(obj, pole_name, "Rig")
 
         # HandCopy
         c = get_or_create_constraint(obj, hand_name, "COPY_ROTATION", "Copy Rotation")
@@ -252,7 +252,7 @@ def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
         c.subtarget = src_name
         c.target_space = "LOCAL"
         c.owner_space = "LOCAL"
-        set_bone_group(obj, src_name, "Rig", "THEME05")
+        set_bone_collection(obj, src_name, "Rig")
 
         if scale_min:
             # for Intermediate & Distal
@@ -294,7 +294,7 @@ def make_finger_bend(obj: bpy.types.Object, finger_name: str, suffix: str):
         c.to_max_x_rot = 3
         c.mix_mode_rot = "BEFORE"
 
-        set_bone_group(obj, src_name, "Rig", "THEME05")
+        set_bone_collection(obj, src_name, "Rig")
 
         if scale_min:
             # scale influence
@@ -388,7 +388,7 @@ def make_hand_rig(obj, suffix: str):
         c.to_max_z_rot = 1.5 * influence
         c.mix_mode_rot = "BEFORE"
 
-        set_bone_group(obj, src_name, "Rig", "THEME05")
+        set_bone_collection(obj, src_name, "Rig", "THEME05")
 
     with enter_pose(obj):
         spread_pose = obj.pose.bones[spread_name]
